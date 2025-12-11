@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Luminary 2048</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX/Typescript -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+      body {
+        font-family: 'Nunito', sans-serif;
+        touch-action: none; /* Prevent scrolling while playing */
+      }
+      /* Custom animation for pop-in effect */
+      @keyframes pop {
+        0% { transform: scale(0); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-pop {
+        animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      /* Custom animation for merge effect */
+      @keyframes merge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+      }
+      .animate-merge {
+        animation: merge 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.1",
+    "react/": "https://esm.sh/react@^19.2.1/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.1/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react,typescript">
+      const { useState, useEffect, useCallback, useRef } = React;
+
+      // ----------------------------------------------------------------------
+      // TYPES
+      // ----------------------------------------------------------------------
+      type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+      type Language = 'en' | 'zh';
+
+      interface TileData {
+        id: number;
+        value: number;
+        row: number;
+        col: number;
+        isNew?: boolean;
+        isMerged?: boolean;
+      }
+
+      interface GameState {
+        tiles: TileData[];
+        score: number;
+        bestScore: number;
+        won: boolean;
+        over: boolean;
+        lastMoveDirection: Direction | null;
+      }
+
+      interface Theme {
+        name: string;
+        appBg: string;
+        gridBg: string;
+        emptyCellBg: string;
+        textColor: string;
+        scoreBg: string;
+        scoreText: string;
+        buttonBg: string;
+        buttonText: string;
+        tileColors: Record<number, string>;
+        tileTextColors: Record<number, string>;
+      }
+
+      // ----------------------------------------------------------------------
+      // CONSTANTS
+      // ----------------------------------------------------------------------
+      const GRID_SIZE = 4;
+
+      const TRANSLATIONS = {
+        en: {
+            score: 'Score',
+            best: 'Best',
+            newGame: 'New Game',
+            archive: 'Archive',
+            gameOver: 'Game Over',
+            youWin: 'You Win!',
+            tryAgain: 'Try Again',
+            keepGoing: 'Keep Going',
+            howToPlay: 'Use arrow keys or swipe.',
+            howToPlay2: 'Reach 2048 to win!',
+            howToPlayMobile: 'Swipe to move. Reach 2048.',
+            saveModalTitle: 'Game Archive',
+            quickSave: 'Quick Save (Device)',
+            save: 'Save',
+            load: 'Load',
+            currentSaveCode: 'Current Save Code',
+            copy: 'Copy',
+            copied: 'Copied!',
+            loadSaveCode: 'Load Save Code',
+            pastePlaceholder: 'Paste save code here...',
+            loadGameCode: 'Load Game Code',
+            invalidCode: 'Invalid save code.',
+            noLocalSave: 'No local save found.',
+            savedToLocal: 'Game Saved to Local Storage!',
+            lightMode: 'Light',
+            darkMode: 'Dark',
+        },
+        zh: {
+            score: '得分',
+            best: '最高分',
+            newGame: '新游戏',
+            archive: '存档',
+            gameOver: '游戏结束',
+            youWin: '你赢了！',
+            tryAgain: '再试一次',
+            keepGoing: '继续游戏',
+            howToPlay: '使用方向键或滑动移动。',
+            howToPlay2: '合成2048获胜！',
+            howToPlayMobile: '滑动移动方块。合成2048。',
+            saveModalTitle: '游戏存档',
+            quickSave: '快速存档 (本地)',
+            save: '保存',
+            load: '读取',
+            currentSaveCode: '当前存档码',
+            copy: '复制',
+            copied: '已复制',
+            loadSaveCode: '读取存档码',
+            pastePlaceholder: '在此粘贴存档码...',
+            loadGameCode: '读取存档',
+            invalidCode: '无效的存档码',
+            noLocalSave: '未找到本地存档',
+            savedToLocal: '游戏已保存到本地！',
+            lightMode: '亮色',
+            darkMode: '暗色',
+        }
+      };
+
+      const THEMES = {
+        // --- CLASSIC ---
+        classic: {
+            name: 'Classic',
+            appBg: 'bg-[#faf8ef]',
+            gridBg: 'bg-[#bbada0]',
+            emptyCellBg: 'bg-[#cdc1b4]',
+            textColor: 'text-[#776e65]',
+            scoreBg: 'bg-[#bbada0]',
+            scoreText: 'text-white',
+            buttonBg: 'bg-[#8f7a66]',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-[#eee4da]',
+            4: 'bg-[#ede0c8]',
+            8: 'bg-[#f2b179]',
+            16: 'bg-[#f59563]',
+            32: 'bg-[#f67c5f]',
+            64: 'bg-[#f65e3b]',
+            128: 'bg-[#edcf72]',
+            256: 'bg-[#edcc61]',
+            512: 'bg-[#edc850]',
+            1024: 'bg-[#edc53f]',
+            2048: 'bg-[#edc22e]',
+            },
+            tileTextColors: {
+            2: 'text-[#776e65]',
+            4: 'text-[#776e65]',
+            },
+        },
+        classic_dark: {
+            name: 'Classic Dark',
+            appBg: 'bg-[#181818]',
+            gridBg: 'bg-[#2a2a2a]',
+            emptyCellBg: 'bg-[#3d3d3d]',
+            textColor: 'text-[#e0e0e0]',
+            scoreBg: 'bg-[#2a2a2a]',
+            scoreText: 'text-white',
+            buttonBg: 'bg-[#4a4a4a]',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-[#555555]', 
+            4: 'bg-[#666666]', 
+            8: 'bg-[#8c6b4a]',
+            16: 'bg-[#964B00]',
+            32: 'bg-[#8B3A3A]',
+            64: 'bg-[#701C1C]',
+            128: 'bg-[#856e1b]',
+            256: 'bg-[#85511b]',
+            512: 'bg-[#85321b]',
+            1024: 'bg-[#7a6d1b]',
+            2048: 'bg-[#7a741b]',
+            },
+            tileTextColors: {
+            2: 'text-white',
+            4: 'text-white',
+            },
+        },
+
+        // --- BUBBLEGUM (PINK) ---
+        bubblegum: {
+            name: 'Bubblegum',
+            appBg: 'bg-pink-50',
+            gridBg: 'bg-pink-200',
+            emptyCellBg: 'bg-pink-100',
+            textColor: 'text-pink-900',
+            scoreBg: 'bg-pink-300',
+            scoreText: 'text-pink-900',
+            buttonBg: 'bg-pink-500',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-pink-300',
+            4: 'bg-pink-400',
+            8: 'bg-rose-300',
+            16: 'bg-rose-400',
+            32: 'bg-orange-300',
+            64: 'bg-orange-400',
+            128: 'bg-yellow-300',
+            256: 'bg-yellow-400',
+            512: 'bg-lime-300',
+            1024: 'bg-lime-400',
+            2048: 'bg-teal-400',
+            },
+            tileTextColors: {
+            2: 'text-pink-900',
+            4: 'text-pink-900',
+            8: 'text-pink-900',
+            16: 'text-white',
+            },
+        },
+        bubblegum_dark: {
+            name: 'Bubblegum Dark',
+            appBg: 'bg-[#2D0A18]',
+            gridBg: 'bg-[#501B34]',
+            emptyCellBg: 'bg-[#6D2547]',
+            textColor: 'text-pink-100',
+            scoreBg: 'bg-[#6D2547]',
+            scoreText: 'text-pink-100',
+            buttonBg: 'bg-[#9D3866]',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-[#853457]',
+            4: 'bg-[#9D3866]',
+            8: 'bg-[#9d174d]',
+            16: 'bg-[#be185d]',
+            32: 'bg-[#be123c]',
+            64: 'bg-[#9f1239]',
+            128: 'bg-[#881337]',
+            256: 'bg-[#831843]',
+            512: 'bg-[#4c0519]',
+            1024: 'bg-[#500724]',
+            2048: 'bg-[#3e041c]',
+            },
+            tileTextColors: {
+            2: 'text-white',
+            },
+        },
+
+        // --- FOREST (GREEN) ---
+        forest: {
+            name: 'Forest',
+            appBg: 'bg-stone-100',
+            gridBg: 'bg-stone-300',
+            emptyCellBg: 'bg-stone-200',
+            textColor: 'text-stone-800',
+            scoreBg: 'bg-stone-400',
+            scoreText: 'text-white',
+            buttonBg: 'bg-emerald-600',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-emerald-200',
+            4: 'bg-emerald-300',
+            8: 'bg-teal-400',
+            16: 'bg-teal-500',
+            32: 'bg-cyan-500',
+            64: 'bg-cyan-600',
+            128: 'bg-sky-500',
+            256: 'bg-sky-600',
+            512: 'bg-blue-500',
+            1024: 'bg-blue-600',
+            2048: 'bg-indigo-600',
+            },
+            tileTextColors: {
+            2: 'text-stone-800',
+            4: 'text-stone-800',
+            },
+        },
+        forest_dark: {
+            name: 'Forest Dark',
+            appBg: 'bg-[#0F1C15]',
+            gridBg: 'bg-[#1C3628]',
+            emptyCellBg: 'bg-[#2A4D3A]',
+            textColor: 'text-emerald-100',
+            scoreBg: 'bg-[#2A4D3A]',
+            scoreText: 'text-emerald-100',
+            buttonBg: 'bg-[#10B981]',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-[#2F5E48]',
+            4: 'bg-[#3A7258]',
+            8: 'bg-[#115e59]',
+            16: 'bg-[#0f766e]',
+            32: 'bg-[#0369a1]',
+            64: 'bg-[#1d4ed8]',
+            128: 'bg-[#1e40af]',
+            256: 'bg-[#1e3a8a]',
+            512: 'bg-[#312e81]',
+            1024: 'bg-[#172554]',
+            2048: 'bg-[#020617]',
+            },
+            tileTextColors: {
+            2: 'text-white',
+            },
+        },
+
+        // --- BLUE ---
+        blue: {
+            name: 'Blue',
+            appBg: 'bg-blue-50',
+            gridBg: 'bg-blue-200',
+            emptyCellBg: 'bg-blue-100',
+            textColor: 'text-blue-900',
+            scoreBg: 'bg-blue-300',
+            scoreText: 'text-blue-900',
+            buttonBg: 'bg-blue-500',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-blue-200',
+            4: 'bg-blue-300',
+            8: 'bg-sky-300',
+            16: 'bg-sky-400',
+            32: 'bg-cyan-300',
+            64: 'bg-cyan-400',
+            128: 'bg-teal-300',
+            256: 'bg-teal-400',
+            512: 'bg-indigo-300',
+            1024: 'bg-indigo-400',
+            2048: 'bg-violet-400',
+            },
+            tileTextColors: {
+            2: 'text-blue-900',
+            4: 'text-blue-900',
+            },
+        },
+        blue_dark: {
+            name: 'Blue Dark',
+            appBg: 'bg-slate-900',
+            gridBg: 'bg-slate-800',
+            emptyCellBg: 'bg-slate-700',
+            textColor: 'text-slate-100',
+            scoreBg: 'bg-slate-700',
+            scoreText: 'text-blue-300',
+            buttonBg: 'bg-indigo-600',
+            buttonText: 'text-white',
+            tileColors: {
+            2: 'bg-indigo-800',
+            4: 'bg-indigo-900',
+            8: 'bg-[#4338ca]',
+            16: 'bg-[#3730a3]',
+            32: 'bg-[#5b21b6]',
+            64: 'bg-[#6b21a8]',
+            128: 'bg-[#581c87]',
+            256: 'bg-[#701a75]',
+            512: 'bg-[#831843]',
+            1024: 'bg-[#4c1d95]',
+            2048: 'bg-[#2e1065]',
+            },
+            tileTextColors: {},
+        },
+      };
+
+      // ----------------------------------------------------------------------
+      // GAME LOGIC
+      // ----------------------------------------------------------------------
+      let uniqueIdCounter = 0;
+
+      function getNewId() {
+        return ++uniqueIdCounter;
+      }
+
+      const getInitialState = () => {
+        const tiles = [];
+        addRandomTile(tiles);
+        addRandomTile(tiles);
+        
+        let bestScore = 0;
+        try {
+          const saved = localStorage.getItem('luminary2048-best');
+          if (saved) bestScore = parseInt(saved, 10);
+        } catch (e) {
+          console.error("Storage access error", e);
+        }
+
+        return {
+          tiles,
+          score: 0,
+          bestScore,
+          won: false,
+          over: false,
+          lastMoveDirection: null,
+        };
+      };
+
+      const serializeGameState = (state) => {
+        try {
+          const json = JSON.stringify(state);
+          return btoa(json);
+        } catch (e) {
+          console.error("Failed to serialize", e);
+          return "";
+        }
+      };
+
+      const deserializeGameState = (code) => {
+        try {
+          const json = atob(code);
+          const state = JSON.parse(json);
+          if (!state.tiles || typeof state.score !== 'number') return null;
+          return state;
+        } catch (e) {
+          console.error("Failed to deserialize", e);
+          return null;
+        }
+      };
+
+      const addRandomTile = (tiles) => {
+        const occupied = new Set(tiles.map(t => `${t.row},${t.col}`));
+        const emptyCells = [];
+        
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (!occupied.has(`${r},${c}`)) {
+              emptyCells.push({ r, c });
+            }
+          }
+        }
+
+        if (emptyCells.length > 0) {
+          const { r, c } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          const value = Math.random() < 0.9 ? 2 : 4;
+          tiles.push({
+            id: getNewId(),
+            value,
+            row: r,
+            col: c,
+            isNew: true,
+            isMerged: false,
+          });
+        }
+      };
+
+      const getVector = (direction) => {
+        const map = {
+          UP: { r: -1, c: 0 },
+          DOWN: { r: 1, c: 0 },
+          LEFT: { r: 0, c: -1 },
+          RIGHT: { r: 0, c: 1 },
+        };
+        return map[direction];
+      };
+
+      const moveTiles = (state, direction) => {
+        if (state.over) return state;
+
+        const vector = getVector(direction);
+        const tiles = state.tiles.map(t => ({ ...t, isNew: false, isMerged: false })); 
+        let moved = false;
+        let scoreToAdd = 0;
+        const mergedIds = new Set();
+
+        tiles.sort((a, b) => {
+          if (direction === 'UP') return a.row - b.row;
+          if (direction === 'DOWN') return b.row - a.row;
+          if (direction === 'LEFT') return a.col - b.col;
+          if (direction === 'RIGHT') return b.col - a.col;
+          return 0;
+        });
+
+        const positionMap = new Map();
+        tiles.forEach(t => positionMap.set(`${t.row},${t.col}`, t));
+
+        const newTiles = [];
+        const tilesToRemove = new Set();
+
+        for (const tile of tiles) {
+          let { row, col } = tile;
+          let nextRow = row + vector.r;
+          let nextCol = col + vector.c;
+          let bestRow = row;
+          let bestCol = col;
+          let mergeTarget = null;
+
+          while (
+            nextRow >= 0 && nextRow < GRID_SIZE &&
+            nextCol >= 0 && nextCol < GRID_SIZE
+          ) {
+            const key = `${nextRow},${nextCol}`;
+            const obstacle = positionMap.get(key);
+
+            if (obstacle) {
+              if (obstacle.value === tile.value && !mergedIds.has(obstacle.id)) {
+                mergeTarget = obstacle;
+              }
+              break; 
+            } else {
+              bestRow = nextRow;
+              bestCol = nextCol;
+              nextRow += vector.r;
+              nextCol += vector.c;
+            }
+          }
+
+          if (mergeTarget) {
+            positionMap.delete(`${tile.row},${tile.col}`);
+            tile.row = mergeTarget.row;
+            tile.col = mergeTarget.col;
+            
+            mergeTarget.value *= 2;
+            mergeTarget.isMerged = true;
+            mergedIds.add(mergeTarget.id);
+            tilesToRemove.add(tile.id);
+            
+            scoreToAdd += mergeTarget.value;
+            moved = true;
+          } else {
+            if (bestRow !== tile.row || bestCol !== tile.col) {
+              positionMap.delete(`${tile.row},${tile.col}`);
+              tile.row = bestRow;
+              tile.col = bestCol;
+              positionMap.set(`${bestRow},${bestCol}`, tile);
+              moved = true;
+            }
+            newTiles.push(tile); 
+          }
+        }
+        
+        const finalTiles = tiles.filter(t => !tilesToRemove.has(t.id));
+
+        if (!moved) return state;
+
+        addRandomTile(finalTiles);
+
+        const won = finalTiles.some(t => t.value === 2048) && !state.won;
+
+        let over = false;
+        if (finalTiles.length === GRID_SIZE * GRID_SIZE) {
+          let canMove = false;
+          for(let r=0; r<GRID_SIZE; r++) {
+            for(let c=0; c<GRID_SIZE-1; c++) {
+               const t1 = finalTiles.find(t => t.row === r && t.col === c);
+               const t2 = finalTiles.find(t => t.row === r && t.col === c+1);
+               if(t1 && t2 && t1.value === t2.value) canMove = true;
+            }
+          }
+          for(let c=0; c<GRID_SIZE; c++) {
+            for(let r=0; r<GRID_SIZE-1; r++) {
+               const t1 = finalTiles.find(t => t.row === r && t.col === c);
+               const t2 = finalTiles.find(t => t.row === r+1 && t.col === c);
+               if(t1 && t2 && t1.value === t2.value) canMove = true;
+            }
+          }
+          if (!canMove) over = true;
+        }
+
+        const newScore = state.score + scoreToAdd;
+        const newBest = Math.max(state.bestScore, newScore);
+        localStorage.setItem('luminary2048-best', newBest.toString());
+
+        return {
+          ...state,
+          tiles: finalTiles,
+          score: newScore,
+          bestScore: newBest,
+          won: state.won || won,
+          over,
+          lastMoveDirection: direction,
+        };
+      };
+
+      // ----------------------------------------------------------------------
+      // COMPONENTS
+      // ----------------------------------------------------------------------
+
+      const Tile = ({ tile, theme }) => {
+        const x = tile.col * 25;
+        const y = tile.row * 25;
+
+        const colorClass = theme.tileColors[tile.value] || theme.tileColors[2048] || 'bg-gray-900';
+        const textColorClass = theme.tileTextColors[tile.value] || 'text-white';
+        
+        const digits = tile.value.toString().length;
+        let fontSize = 'text-3xl md:text-4xl';
+        if (digits === 3) fontSize = 'text-2xl md:text-3xl';
+        if (digits >= 4) fontSize = 'text-xl md:text-2xl';
+
+        return (
+          <div
+            className="absolute transition-transform duration-150 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] p-1 md:p-2 will-change-transform"
+            style={{
+              width: '25%',
+              height: '25%',
+              transform: `translate3d(${x*4}%, ${y*4}%, 0)`,
+              left: 0,
+              top: 0,
+              zIndex: tile.isMerged ? 20 : 10, 
+            }}
+          >
+            <div
+              className={`
+                w-full h-full rounded-lg md:rounded-xl flex items-center justify-center font-bold shadow-sm select-none
+                ${colorClass} ${textColorClass} ${fontSize}
+                ${tile.isNew ? 'animate-pop' : ''}
+                ${tile.isMerged ? 'animate-merge' : ''}
+              `}
+            >
+              {tile.value}
+            </div>
+          </div>
+        );
+      };
+
+      const ControlPanel = ({ 
+        onNewGame, 
+        onOpenSaveModal,
+        currentTheme, 
+        setTheme,
+        lang,
+        setLang
+      }) => {
+        const t = TRANSLATIONS[lang];
+        
+        const currentKey = Object.keys(THEMES).find(key => THEMES[key].name === currentTheme.name) || 'classic';
+        const isDark = currentKey.includes('_dark');
+        const family = currentKey.replace('_dark', '');
+
+        const baseFamilies = ['classic', 'bubblegum', 'forest', 'blue'];
+
+        const switchFamily = (newFamily) => {
+          // Preserve the current mode (Light or Dark)
+          const targetKey = isDark ? `${newFamily}_dark` : newFamily;
+          if (THEMES[targetKey]) {
+            setTheme(THEMES[targetKey]);
+          }
+        };
+
+        const toggleMode = () => {
+          const targetKey = isDark ? family : `${family}_dark`;
+          if (THEMES[targetKey]) {
+            setTheme(THEMES[targetKey]);
+          }
+        };
+
+        return (
+          <div className="flex flex-col gap-4 w-full relative z-20">
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 w-full">
+                  <button
+                  onClick={onNewGame}
+                  className={`flex-1 px-4 py-3 rounded-xl font-bold shadow-md transition transform active:scale-95 text-sm md:text-base whitespace-nowrap ${currentTheme.buttonBg} ${currentTheme.buttonText}`}
+                  >
+                  {t.newGame}
+                  </button>
+                  <button
+                  onClick={onOpenSaveModal}
+                  className={`flex-1 px-4 py-3 rounded-xl font-bold shadow-md transition transform active:scale-95 text-sm md:text-base bg-gray-500 text-white`}
+                  >
+                  {t.archive}
+                  </button>
+              </div>
+              
+              <div className="flex gap-2 items-center justify-between bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                  <div className="flex gap-2 items-center">
+                      {baseFamilies.map((fam) => {
+                          const themeOption = THEMES[fam];
+                          if (!themeOption) return null;
+                          const isSelected = family === fam;
+                          return (
+                              <button
+                                  key={fam}
+                                  onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      switchFamily(fam);
+                                  }}
+                                  aria-label={`Switch to ${themeOption.name} theme`}
+                                  className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${themeOption.buttonBg} ${isSelected ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'}`}
+                                  title={themeOption.name}
+                              />
+                          )
+                      })}
+
+                      <div className="w-[1px] h-6 bg-gray-400/30 mx-1"></div>
+                      
+                      <button
+                          onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleMode();
+                          }}
+                          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all cursor-pointer bg-white/20 hover:bg-white/30 border-2 border-transparent hover:border-white/50 ${currentTheme.textColor}`}
+                          title={isDark ? t.lightMode : t.darkMode}
+                      >
+                          {isDark ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="5"></circle>
+                                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                              </svg>
+                          ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                              </svg>
+                          )}
+                      </button>
+                  </div>
+
+                  <button
+                      onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLang(lang === 'en' ? 'zh' : 'en');
+                      }}
+                      className={`px-3 py-1 rounded-lg font-bold text-xs shadow-sm transition-colors cursor-pointer ${currentTheme.buttonBg} ${currentTheme.buttonText} opacity-90 hover:opacity-100`}
+                  >
+                      {lang === 'en' ? '中' : 'EN'}
+                  </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const Board = ({ 
+        tiles, 
+        theme, 
+        gameOver, 
+        won, 
+        onTryAgain,
+        onKeepGoing,
+        lang
+      }) => {
+        const t = TRANSLATIONS[lang];
+        const gridCells = Array(GRID_SIZE * GRID_SIZE).fill(0);
+
+        return (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div 
+              className={`relative w-full aspect-square rounded-xl md:rounded-2xl p-1 md:p-2 shadow-inner ${theme.gridBg}`}
+            >
+              <div className="grid grid-cols-4 grid-rows-4 w-full h-full">
+                {gridCells.map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="w-full h-full p-1 md:p-2"
+                  >
+                    <div className={`w-full h-full rounded-lg md:rounded-xl ${theme.emptyCellBg}`} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="absolute inset-0 p-1 md:p-2">
+                  <div className="relative w-full h-full">
+                      {tiles.map(tile => (
+                          <Tile key={tile.id} tile={tile} theme={theme} />
+                      ))}
+                  </div>
+              </div>
+
+              {(gameOver || won) && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm rounded-xl md:rounded-2xl animate-pop">
+                  <h2 className={`text-4xl md:text-5xl font-extrabold mb-4 ${theme.textColor}`}>
+                    {won ? t.youWin : t.gameOver}
+                  </h2>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={onTryAgain}
+                      className={`px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition ${theme.buttonBg} ${theme.buttonText}`}
+                    >
+                      {t.tryAgain}
+                    </button>
+                    {won && (
+                      <button
+                      onClick={onKeepGoing}
+                      className={`px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition bg-gray-500 text-white`}
+                    >
+                      {t.keepGoing}
+                    </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const SaveModal = ({ isOpen, onClose, gameState, onLoadGame, theme, lang }) => {
+        const [saveCode, setSaveCode] = useState('');
+        const [loadCode, setLoadCode] = useState('');
+        const [copyStatus, setCopyStatus] = useState('');
+        const [error, setError] = useState('');
+        
+        const t = TRANSLATIONS[lang];
+
+        useEffect(() => {
+          if (isOpen) {
+            setSaveCode(serializeGameState(gameState));
+            setLoadCode('');
+            setError('');
+            setCopyStatus(t.copy);
+          }
+        }, [isOpen, gameState, lang, t.copy]);
+
+        if (!isOpen) return null;
+
+        const handleCopy = () => {
+          navigator.clipboard.writeText(saveCode);
+          setCopyStatus(t.copied);
+          setTimeout(() => setCopyStatus(t.copy), 2000);
+        };
+
+        const handleLoad = () => {
+          const state = deserializeGameState(loadCode);
+          if (state) {
+            onLoadGame(state);
+            onClose();
+          } else {
+            setError(t.invalidCode);
+          }
+        };
+
+        const handleLocalSave = () => {
+          localStorage.setItem('luminary2048-save', serializeGameState(gameState));
+          alert(t.savedToLocal);
+        };
+
+        const handleLocalLoad = () => {
+            const saved = localStorage.getItem('luminary2048-save');
+            if (saved) {
+                const state = deserializeGameState(saved);
+                if (state) {
+                    onLoadGame(state);
+                    onClose();
+                }
+            } else {
+                setError(t.noLocalSave);
+            }
+        }
+
+        const borderColor = theme.gridBg.replace('bg-', 'border-');
+
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop">
+              <div className={`w-full max-w-md p-6 rounded-3xl shadow-2xl ${theme.appBg} ${theme.textColor} border-4 ${borderColor}`}>
+                  <h2 className="text-2xl font-bold mb-6 flex justify-between items-center">
+                      <span>{t.saveModalTitle}</span>
+                      <button 
+                        onClick={onClose} 
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition"
+                      >
+                        &times;
+                      </button>
+                  </h2>
+
+                  <div className="mb-6 pb-6 border-b border-gray-400/20">
+                      <h3 className="text-xs font-bold uppercase opacity-60 tracking-wider mb-3">{t.quickSave}</h3>
+                      <div className="flex gap-3">
+                          <button onClick={handleLocalSave} className={`flex-1 py-3 rounded-xl font-bold ${theme.buttonBg} ${theme.buttonText} shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02]`}>
+                              {t.save}
+                          </button>
+                          <button onClick={handleLocalLoad} className={`flex-1 py-3 rounded-xl font-bold bg-gray-500 text-white shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02]`}>
+                              {t.load}
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="mb-6">
+                      <h3 className="text-xs font-bold uppercase opacity-60 tracking-wider mb-2">{t.currentSaveCode}</h3>
+                      <div className="flex gap-2">
+                          <input 
+                              readOnly 
+                              value={saveCode} 
+                              className="w-full bg-white/10 border border-black/10 rounded-xl px-4 py-2 text-xs font-mono truncate"
+                          />
+                          <button onClick={handleCopy} className={`px-4 py-2 text-xs font-bold rounded-xl ${theme.buttonBg} ${theme.buttonText} shadow-sm min-w-[80px]`}>
+                              {copyStatus}
+                          </button>
+                      </div>
+                  </div>
+
+                  <div>
+                      <h3 className="text-xs font-bold uppercase opacity-60 tracking-wider mb-2">{t.loadSaveCode}</h3>
+                      <textarea 
+                          value={loadCode}
+                          onChange={(e) => setLoadCode(e.target.value)}
+                          placeholder={t.pastePlaceholder}
+                          className="w-full bg-white/10 border border-black/10 rounded-xl px-4 py-3 text-xs font-mono h-24 resize-none focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-current"
+                      />
+                      {error && <p className="text-red-500 text-xs mt-2 font-bold">{error}</p>}
+                      <button 
+                          onClick={handleLoad}
+                          className={`w-full mt-4 py-3 rounded-xl font-bold ${theme.buttonBg} ${theme.buttonText} shadow-lg transition transform hover:scale-[1.02]`}
+                      >
+                          {t.loadGameCode}
+                      </button>
+                  </div>
+              </div>
+          </div>
+        );
+      };
+
+      // ----------------------------------------------------------------------
+      // APP
+      // ----------------------------------------------------------------------
+      function App() {
+        const [gameState, setGameState] = useState(getInitialState);
+        const [theme, setTheme] = useState(THEMES.classic);
+        const [lang, setLang] = useState('en');
+        const [isKeepGoing, setIsKeepGoing] = useState(false);
+        const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+        
+        const touchStartRef = useRef(null);
+        const movingRef = useRef(false);
+        const boardRef = useRef(null);
+        
+        const t = TRANSLATIONS[lang];
+
+        const handleKeyDown = useCallback((e) => {
+          if (movingRef.current) return;
+          if (isSaveModalOpen) return;
+          
+          let direction = null;
+          if (['ArrowUp', 'w', 'W'].includes(e.key)) direction = 'UP';
+          else if (['ArrowDown', 's', 'S'].includes(e.key)) direction = 'DOWN';
+          else if (['ArrowLeft', 'a', 'A'].includes(e.key)) direction = 'LEFT';
+          else if (['ArrowRight', 'd', 'D'].includes(e.key)) direction = 'RIGHT';
+
+          if (direction) {
+            e.preventDefault();
+            movingRef.current = true;
+            setGameState(prev => moveTiles(prev, direction));
+            setTimeout(() => { movingRef.current = false; }, 150);
+          }
+        }, [isSaveModalOpen]);
+
+        useEffect(() => {
+          window.addEventListener('keydown', handleKeyDown);
+          return () => window.removeEventListener('keydown', handleKeyDown);
+        }, [handleKeyDown]);
+
+        useEffect(() => {
+          const board = boardRef.current;
+          if (!board) return;
+          const preventDefault = (e) => e.preventDefault();
+          board.addEventListener('touchmove', preventDefault, { passive: false });
+          return () => board.removeEventListener('touchmove', preventDefault);
+        }, []);
+
+        const handleTouchStart = (e) => {
+          if (isSaveModalOpen) return;
+          touchStartRef.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY
+          };
+        };
+
+        const handleTouchEnd = (e) => {
+          if (isSaveModalOpen) return;
+          if (!touchStartRef.current) return;
+          const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+          const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          if (Math.max(absDx, absDy) > 30) { 
+            let direction = null;
+            if (absDx > absDy) {
+              direction = dx > 0 ? 'RIGHT' : 'LEFT';
+            } else {
+              direction = dy > 0 ? 'DOWN' : 'UP';
+            }
+            
+            if (direction) {
+              setGameState(prev => moveTiles(prev, direction));
+            }
+          }
+          touchStartRef.current = null;
+        };
+
+        const resetGame = () => {
+          setGameState(getInitialState());
+          setIsKeepGoing(false);
+        };
+
+        const keepGoing = () => {
+          setIsKeepGoing(true);
+          setGameState(prev => ({ ...prev, won: false }));
+        };
+        
+        const handleLoadGame = (newState) => {
+          setGameState(newState);
+          setIsKeepGoing(false);
+        };
+
+        const showWon = gameState.won && !isKeepGoing;
+        const showOver = gameState.over;
+
+        return (
+          <div 
+            className={`fixed inset-0 w-full h-full flex items-center justify-center p-4 transition-colors duration-500 ${theme.appBg} overflow-hidden`}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="w-full h-full flex flex-col landscape:flex-row items-center justify-center gap-6 md:gap-12 landscape:gap-8 max-w-[500px] landscape:max-w-none">
+              
+              <div className="w-full flex flex-col gap-4 landscape:w-72 landscape:h-full landscape:justify-center shrink-0 z-10">
+                
+                <div className="flex justify-between items-center landscape:flex-col landscape:items-start landscape:gap-4">
+                  <h1 className={`text-5xl md:text-6xl font-extrabold ${theme.textColor} landscape:text-5xl xl:text-7xl`}>2048</h1>
+                  
+                  <div className="flex gap-2 w-full landscape:justify-start">
+                      <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
+                        <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.score}</div>
+                        <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.score}</div>
+                      </div>
+                      <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
+                        <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.best}</div>
+                        <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.bestScore}</div>
+                      </div>
+                  </div>
+                </div>
+
+                <ControlPanel 
+                  onNewGame={resetGame} 
+                  onOpenSaveModal={() => setIsSaveModalOpen(true)}
+                  currentTheme={theme} 
+                  setTheme={setTheme}
+                  lang={lang}
+                  setLang={setLang}
+                />
+                
+                <div className={`hidden landscape:block mt-auto text-left ${theme.textColor} opacity-60 text-xs font-medium`}>
+                  <p>{t.howToPlay}</p>
+                  <p>{t.howToPlay2}</p>
+                </div>
+              </div>
+
+              <div 
+                  ref={boardRef}
+                  className="relative shrink-0 w-full max-w-[500px] portrait:max-w-[65vh] landscape:h-[85vh] landscape:w-auto landscape:aspect-square landscape:max-w-none landscape:max-h-[90vw]"
+              >
+                <Board 
+                  tiles={gameState.tiles} 
+                  theme={theme} 
+                  gameOver={showOver} 
+                  won={showWon}
+                  onTryAgain={resetGame}
+                  onKeepGoing={keepGoing}
+                  lang={lang}
+                />
+              </div>
+              
+              <div className={`landscape:hidden mt-2 text-center ${theme.textColor} opacity-60 text-sm font-medium z-10`}>
+                <p>{t.howToPlayMobile}</p>
+              </div>
+
+            </div>
+            
+            <SaveModal 
+              isOpen={isSaveModalOpen} 
+              onClose={() => setIsSaveModalOpen(false)} 
+              gameState={gameState} 
+              onLoadGame={handleLoadGame} 
+              theme={theme}
+              lang={lang}
+            />
+          </div>
+        );
+      }
+
+      // ----------------------------------------------------------------------
+      // MOUNT
+      // ----------------------------------------------------------------------
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+      }
+    </script>
+  </body>
+</html>
