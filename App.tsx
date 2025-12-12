@@ -4,6 +4,7 @@ import { getInitialState, moveTiles } from './services/gameLogic';
 import { Board } from './components/Board';
 import { ControlPanel } from './components/ControlPanel';
 import { SaveModal } from './components/SaveModal';
+import { SettingsModal } from './components/SettingsModal';
 import { Direction, GameState, Theme, Language } from './types';
 
 function App() {
@@ -12,17 +13,19 @@ function App() {
   const [lang, setLang] = useState<Language>('en'); // Default language
   const [isKeepGoing, setIsKeepGoing] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   const touchStartRef = useRef<{ x: number, y: number } | null>(null);
   const movingRef = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
   
   const t = TRANSLATIONS[lang];
+  const isModalOpen = isSaveModalOpen || isSettingsModalOpen;
 
   // Keyboard input
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (movingRef.current) return;
-    if (isSaveModalOpen) return;
+    if (isModalOpen) return;
     
     let direction: Direction | null = null;
     if (['ArrowUp', 'w', 'W'].includes(e.key)) direction = 'UP';
@@ -36,7 +39,7 @@ function App() {
       setGameState(prev => moveTiles(prev, direction!));
       setTimeout(() => { movingRef.current = false; }, 150); // Matches animation duration
     }
-  }, [isSaveModalOpen]);
+  }, [isModalOpen]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -52,7 +55,7 @@ function App() {
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isSaveModalOpen) return;
+    if (isModalOpen) return;
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY
@@ -60,7 +63,7 @@ function App() {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isSaveModalOpen) return;
+    if (isModalOpen) return;
     if (!touchStartRef.current) return;
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
     const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
@@ -129,6 +132,7 @@ function App() {
           <ControlPanel 
             onNewGame={resetGame} 
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             currentTheme={theme} 
             setTheme={setTheme}
             lang={lang}
@@ -142,11 +146,6 @@ function App() {
         </div>
 
         {/* Right/Bottom Column: Board */}
-        {/* 
-            Board container constraints:
-            Portrait: Width drives size (w-full). Height is determined by Board's aspect-square.
-            Landscape: Height drives size (h-[85vh]). Width is determined by aspect-square.
-        */}
         <div 
             ref={boardRef}
             className="relative shrink-0 w-full max-w-[500px] portrait:max-w-[65vh] landscape:h-[85vh] landscape:w-auto landscape:aspect-square landscape:max-w-none landscape:max-h-[90vw]"
@@ -176,6 +175,15 @@ function App() {
         onLoadGame={handleLoadGame} 
         theme={theme}
         lang={lang}
+      />
+
+      <SettingsModal 
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        theme={theme}
+        lang={lang}
+        setLang={setLang}
+        gameState={gameState}
       />
     </div>
   );

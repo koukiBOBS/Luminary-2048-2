@@ -8,6 +8,7 @@ export interface TileData {
   col: number;
   isNew?: boolean;
   isMerged?: boolean;
+  isDying?: boolean; // Used for animation: tile slides to destination before being removed
 }
 
 export interface GameState {

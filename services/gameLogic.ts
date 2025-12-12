@@ -94,7 +94,11 @@ export const moveTiles = (state: GameState, direction: Direction): GameState => 
   if (state.over) return state;
 
   const vector = getVector(direction);
-  const tiles = state.tiles.map(t => ({ ...t, isNew: false, isMerged: false })); // Clone to avoid mutation
+  // Remove tiles that were marked as dying in the previous turn
+  const tiles = state.tiles
+    .filter(t => !t.isDying)
+    .map(t => ({ ...t, isNew: false, isMerged: false }));
+    
   let moved = false;
   let scoreToAdd = 0;
   const mergedIds = new Set<number>();
@@ -114,7 +118,6 @@ export const moveTiles = (state: GameState, direction: Direction): GameState => 
   tiles.forEach(t => positionMap.set(`${t.row},${t.col}`, t));
 
   const newTiles: TileData[] = [];
-  const tilesToRemove = new Set<number>();
 
   for (const tile of tiles) {
     let { row, col } = tile;
@@ -150,11 +153,11 @@ export const moveTiles = (state: GameState, direction: Direction): GameState => 
       positionMap.delete(`${tile.row},${tile.col}`); // Remove old pos
       tile.row = mergeTarget.row;
       tile.col = mergeTarget.col;
+      tile.isDying = true; // Mark as dying so it animates to position but is ignored next turn
       
       mergeTarget.value *= 2;
       mergeTarget.isMerged = true;
       mergedIds.add(mergeTarget.id);
-      tilesToRemove.add(tile.id); // This tile disappears into the mergeTarget
       
       scoreToAdd += mergeTarget.value;
       moved = true;
@@ -166,39 +169,45 @@ export const moveTiles = (state: GameState, direction: Direction): GameState => 
         positionMap.set(`${bestRow},${bestCol}`, tile);
         moved = true;
       }
-      newTiles.push(tile); // Keep tile
     }
+    newTiles.push(tile); // Keep all tiles (including dying ones for animation)
   }
   
-  // Filter out tiles that merged into others
-  const finalTiles = tiles.filter(t => !tilesToRemove.has(t.id));
+  if (!moved) {
+    // If nothing moved, we still need to clean up any dying tiles from previous state
+    // but the filter at the start handled that.
+    // However, we should return the cleaned state if it changed.
+    if (state.tiles.length !== newTiles.length) {
+       return { ...state, tiles: newTiles };
+    }
+    return state;
+  }
 
-  if (!moved) return state;
-
-  // Spawn new tile
-  addRandomTile(finalTiles);
+  // Spawn new tile - activeTiles check handles excluding dying tiles from valid spawn points
+  addRandomTile(newTiles);
 
   // Check Game Won
-  const won = finalTiles.some(t => t.value === 2048) && !state.won;
+  const activeTiles = newTiles.filter(t => !t.isDying);
+  const won = activeTiles.some(t => t.value === 2048) && !state.won;
 
   // Check Game Over
   let over = false;
-  if (finalTiles.length === GRID_SIZE * GRID_SIZE) {
+  if (activeTiles.length === GRID_SIZE * GRID_SIZE) {
     // Check for possible moves
     let canMove = false;
     // Horizontal checks
     for(let r=0; r<GRID_SIZE; r++) {
       for(let c=0; c<GRID_SIZE-1; c++) {
-         const t1 = finalTiles.find(t => t.row === r && t.col === c);
-         const t2 = finalTiles.find(t => t.row === r && t.col === c+1);
+         const t1 = activeTiles.find(t => t.row === r && t.col === c);
+         const t2 = activeTiles.find(t => t.row === r && t.col === c+1);
          if(t1 && t2 && t1.value === t2.value) canMove = true;
       }
     }
     // Vertical checks
     for(let c=0; c<GRID_SIZE; c++) {
       for(let r=0; r<GRID_SIZE-1; r++) {
-         const t1 = finalTiles.find(t => t.row === r && t.col === c);
-         const t2 = finalTiles.find(t => t.row === r+1 && t.col === c);
+         const t1 = activeTiles.find(t => t.row === r && t.col === c);
+         const t2 = activeTiles.find(t => t.row === r+1 && t.col === c);
          if(t1 && t2 && t1.value === t2.value) canMove = true;
       }
     }
@@ -211,7 +220,7 @@ export const moveTiles = (state: GameState, direction: Direction): GameState => 
 
   return {
     ...state,
-    tiles: finalTiles,
+    tiles: newTiles,
     score: newScore,
     bestScore: newBest,
     won: state.won || won,

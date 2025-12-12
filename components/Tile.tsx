@@ -23,14 +23,14 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
 
   return (
     <div
-      className="absolute transition-transform duration-200 ease-in-out p-1 md:p-2"
+      className="absolute transition-transform duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] p-1 md:p-2 will-change-transform"
       style={{
         width: '25%',
         height: '25%',
         transform: `translate(${x*4}%, ${y*4}%)`, // x*4 because x is 25, 50 etc. 25*4 = 100%
         left: 0,
         top: 0,
-        zIndex: tile.isMerged ? 20 : 10, 
+        zIndex: tile.isMerged ? 20 : (tile.isDying ? 5 : 10), 
       }}
     >
       <div
