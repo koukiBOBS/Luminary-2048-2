@@ -40,7 +40,12 @@ export const TRANSLATIONS = {
     askAi: 'Ask AI for Hint',
     aiThinking: 'AI is thinking...',
     aiHintTitle: 'Gemini Says:',
-    version: 'Version 1.0',
+    version: 'Version 1.1',
+    downloadSave: 'Download File',
+    uploadSave: 'Upload File',
+    fileSave: 'File Backup',
+    uploadSuccess: 'Game loaded from file!',
+    fileError: 'Error reading file.',
   },
   zh: {
     score: '得分',
@@ -79,7 +84,12 @@ export const TRANSLATIONS = {
     askAi: '获取 AI 提示',
     aiThinking: 'AI 正在思考...',
     aiHintTitle: 'Gemini 建议:',
-    version: '版本 1.0',
+    version: '版本 1.1',
+    downloadSave: '下载文件',
+    uploadSave: '上传文件',
+    fileSave: '文件备份',
+    uploadSuccess: '存档已读取！',
+    fileError: '读取文件错误。',
   }
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GameState, Theme, Language } from '../types';
 import { serializeGameState, deserializeGameState } from '../services/gameLogic';
 import { TRANSLATIONS } from '../constants';
@@ -17,6 +17,7 @@ export const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, gameState
   const [loadCode, setLoadCode] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const t = TRANSLATIONS[lang];
 
@@ -65,6 +66,56 @@ export const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, gameState
       }
   }
 
+  const handleDownload = () => {
+    try {
+        const jsonString = atob(saveCode); // Decode base64 to get raw JSON
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toISOString().slice(0, 10);
+        a.download = `luminary-2048-save-${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error("Download failed", e);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const result = event.target?.result as string;
+            // Result is JSON string, need to convert to base64 for deserializeGameState
+            const base64 = btoa(result);
+            const state = deserializeGameState(base64);
+            if (state) {
+                onLoadGame(state);
+                onClose();
+                alert(t.uploadSuccess);
+            } else {
+                setError(t.invalidCode);
+            }
+        } catch (err) {
+            console.error(err);
+            setError(t.fileError);
+        }
+        // Reset input value so same file can be selected again if needed
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   // Helper to get border color from bg color class string
   const borderColor = theme.gridBg.replace('bg-', 'border-');
 
@@ -91,6 +142,28 @@ export const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, gameState
                     <button onClick={handleLocalLoad} className={`flex-1 py-3 rounded-xl font-bold bg-gray-500 text-white shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02]`}>
                         {t.load}
                     </button>
+                </div>
+            </div>
+
+            {/* File Save Section */}
+            <div className="mb-6 pb-6 border-b border-gray-400/20">
+                <h3 className="text-xs font-bold uppercase opacity-60 tracking-wider mb-3">{t.fileSave}</h3>
+                <div className="flex gap-3">
+                    <button onClick={handleDownload} className={`flex-1 py-3 rounded-xl font-bold ${theme.buttonBg} ${theme.buttonText} shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02] flex items-center justify-center gap-2`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        {t.downloadSave}
+                    </button>
+                    <button onClick={handleUploadClick} className={`flex-1 py-3 rounded-xl font-bold bg-gray-500 text-white shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02] flex items-center justify-center gap-2`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        {t.uploadSave}
+                    </button>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        accept=".json" 
+                        className="hidden" 
+                    />
                 </div>
             </div>
 
