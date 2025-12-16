@@ -6,11 +6,11 @@
     <title>Luminary 2048</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM -->
+    <!-- React & ReactDOM (UMD) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- Babel for JSX/Typescript -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -18,6 +18,7 @@
       body {
         font-family: 'Nunito', sans-serif;
         touch-action: none; /* Prevent scrolling while playing */
+        background-color: #faf8ef;
       }
       /* Custom animation for pop-in effect */
       @keyframes pop {
@@ -38,13 +39,15 @@
         animation: merge 0.2s ease-in-out forwards;
       }
     </style>
-<script type="importmap">
+    
+    <!-- Import Map for external modules -->
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.1",
-    "react/": "https://esm.sh/react@^19.2.1/",
     "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.1/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
@@ -53,6 +56,9 @@
     <div id="root"></div>
 
     <script type="text/babel" data-presets="react,typescript">
+      // Polyfill process for browser environment to prevent crash
+      window.process = { env: {} };
+
       const { useState, useEffect, useCallback, useRef } = React;
 
       // ----------------------------------------------------------------------
@@ -139,7 +145,12 @@
             askAi: 'Ask AI for Hint',
             aiThinking: 'AI is thinking...',
             aiHintTitle: 'Gemini Says:',
-            version: 'Version 1.0',
+            version: 'Version 1.1',
+            downloadSave: 'Download File',
+            uploadSave: 'Upload File',
+            fileSave: 'File Backup',
+            uploadSuccess: 'Game loaded from file!',
+            fileError: 'Error reading file.',
         },
         zh: {
             score: '得分',
@@ -180,12 +191,16 @@
             askAi: '获取 AI 提示',
             aiThinking: 'AI 正在思考...',
             aiHintTitle: 'Gemini 建议:',
-            version: '版本 1.0',
+            version: '版本 1.1',
+            downloadSave: '下载文件',
+            uploadSave: '上传文件',
+            fileSave: '文件备份',
+            uploadSuccess: '存档已读取！',
+            fileError: '读取文件错误。',
         }
       };
 
       const THEMES = {
-        // --- CLASSIC ---
         classic: {
             name: 'Classic',
             appBg: 'bg-[#faf8ef]',
@@ -242,8 +257,6 @@
             4: 'text-white',
             },
         },
-
-        // --- BUBBLEGUM (PINK) ---
         bubblegum: {
             name: 'Bubblegum',
             appBg: 'bg-pink-50',
@@ -301,8 +314,6 @@
             2: 'text-white',
             },
         },
-
-        // --- FOREST (GREEN) ---
         forest: {
             name: 'Forest',
             appBg: 'bg-stone-100',
@@ -358,8 +369,6 @@
             2: 'text-white',
             },
         },
-
-        // --- BLUE ---
         blue: {
             name: 'Blue',
             appBg: 'bg-blue-50',
@@ -424,6 +433,43 @@
         return ++uniqueIdCounter;
       }
 
+      // Ensure the unique ID counter is higher than any existing tile ID
+      // This prevents "ghost tiles" (ID collisions) after loading a saved game
+      const restoreIdCounter = (tiles) => {
+        if (tiles.length > 0) {
+            const maxId = Math.max(...tiles.map(t => t.id));
+            if (maxId >= uniqueIdCounter) {
+            uniqueIdCounter = maxId;
+            }
+        }
+      };
+
+      const addRandomTile = (tiles) => {
+        const occupied = new Set(tiles.map(t => `${t.row},${t.col}`));
+        const emptyCells = [];
+        
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (!occupied.has(`${r},${c}`)) {
+              emptyCells.push({ r, c });
+            }
+          }
+        }
+
+        if (emptyCells.length > 0) {
+          const { r, c } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          const value = Math.random() < 0.9 ? 2 : 4;
+          tiles.push({
+            id: getNewId(),
+            value,
+            row: r,
+            col: c,
+            isNew: true,
+            isMerged: false,
+          });
+        }
+      };
+
       const getInitialState = () => {
         const tiles = [];
         addRandomTile(tiles);
@@ -466,32 +512,6 @@
         } catch (e) {
           console.error("Failed to deserialize", e);
           return null;
-        }
-      };
-
-      const addRandomTile = (tiles) => {
-        const occupied = new Set(tiles.map(t => `${t.row},${t.col}`));
-        const emptyCells = [];
-        
-        for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
-            if (!occupied.has(`${r},${c}`)) {
-              emptyCells.push({ r, c });
-            }
-          }
-        }
-
-        if (emptyCells.length > 0) {
-          const { r, c } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-          const value = Math.random() < 0.9 ? 2 : 4;
-          tiles.push({
-            id: getNewId(),
-            value,
-            row: r,
-            col: c,
-            isNew: true,
-            isMerged: false,
-          });
         }
       };
 
@@ -713,9 +733,66 @@
         );
       };
 
-      // ... ControlPanel, Board, SaveModal, SettingsModal, App ...
-      // Keeping previous implementation for these components unless changed above
-      
+      const Board = ({ 
+        tiles, 
+        theme, 
+        gameOver, 
+        won, 
+        onTryAgain,
+        onKeepGoing,
+        lang
+      }) => {
+        const t = TRANSLATIONS[lang];
+        const gridCells = Array(GRID_SIZE * GRID_SIZE).fill(0);
+
+        return (
+            <div className={`relative w-full aspect-square rounded-xl md:rounded-2xl p-1 md:p-2 shadow-inner ${theme.gridBg}`}>
+                <div className="grid grid-cols-4 grid-rows-4 w-full h-full">
+                {gridCells.map((_, i) => (
+                    <div 
+                    key={i} 
+                    className="w-full h-full p-1 md:p-2"
+                    >
+                    <div className={`w-full h-full rounded-lg md:rounded-xl ${theme.emptyCellBg}`} />
+                    </div>
+                ))}
+                </div>
+
+                <div className="absolute inset-0 p-1 md:p-2">
+                    <div className="relative w-full h-full">
+                        {tiles.map(tile => (
+                            <Tile key={tile.id} tile={tile} theme={theme} />
+                        ))}
+                    </div>
+                </div>
+
+                {(gameOver || won) && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm rounded-xl md:rounded-2xl animate-pop p-4 text-center">
+                    <h2 className={`text-4xl md:text-5xl font-extrabold mb-4 ${theme.textColor}`}>
+                    {won ? t.youWin : t.gameOver}
+                    </h2>
+                    <div className="flex gap-3 flex-wrap justify-center">
+                    <button
+                        onClick={onTryAgain}
+                        className={`px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition ${theme.buttonBg} ${theme.buttonText}`}
+                    >
+                        {t.tryAgain}
+                    </button>
+                    {won && (
+                        <button
+                        onClick={onKeepGoing}
+                        className={`px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition bg-gray-500 text-white`}
+                    >
+                        {t.keepGoing}
+                    </button>
+                    )}
+                    </div>
+                </div>
+                )}
+            </div>
+        );
+      };
+
       const ControlPanel = ({ 
         onNewGame, 
         onOpenSaveModal,
@@ -855,6 +932,7 @@
         const [loadCode, setLoadCode] = useState('');
         const [copyStatus, setCopyStatus] = useState('');
         const [error, setError] = useState('');
+        const fileInputRef = useRef(null);
         
         const t = TRANSLATIONS[lang];
 
@@ -903,6 +981,54 @@
             }
         }
 
+        const handleDownload = () => {
+            try {
+                const jsonString = atob(saveCode);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const date = new Date().toISOString().slice(0, 10);
+                a.download = `luminary-2048-save-${date}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error("Download failed", e);
+            }
+        };
+
+        const handleUploadClick = () => {
+            fileInputRef.current?.click();
+        };
+
+        const handleFileChange = (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const result = event.target?.result;
+                    const base64 = btoa(result);
+                    const state = deserializeGameState(base64);
+                    if (state) {
+                        onLoadGame(state);
+                        onClose();
+                        alert(t.uploadSuccess);
+                    } else {
+                        setError(t.invalidCode);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setError(t.fileError);
+                }
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            };
+            reader.readAsText(file);
+        };
+
         const borderColor = theme.gridBg.replace('bg-', 'border-');
 
         return (
@@ -928,6 +1054,27 @@
                               {t.load}
                           </button>
                       </div>
+                  </div>
+
+                  <div className="mb-6 pb-6 border-b border-gray-400/20">
+                    <h3 className="text-xs font-bold uppercase opacity-60 tracking-wider mb-3">{t.fileSave}</h3>
+                    <div className="flex gap-3">
+                        <button onClick={handleDownload} className={`flex-1 py-3 rounded-xl font-bold ${theme.buttonBg} ${theme.buttonText} shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02] flex items-center justify-center gap-2`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            {t.downloadSave}
+                        </button>
+                        <button onClick={handleUploadClick} className={`flex-1 py-3 rounded-xl font-bold bg-gray-500 text-white shadow-md opacity-90 hover:opacity-100 transition transform hover:scale-[1.02] flex items-center justify-center gap-2`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            {t.uploadSave}
+                        </button>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            accept=".json" 
+                            className="hidden" 
+                        />
+                    </div>
                   </div>
 
                   <div className="mb-6">
@@ -974,12 +1121,11 @@
         gameState
       }) => {
         const t = TRANSLATIONS[lang];
-        // const [hint, setHint] = useState(null);
-        // const [loadingHint, setLoadingHint] = useState(false);
+        const [hint, setHint] = useState(null);
+        const [loadingHint, setLoadingHint] = useState(false);
 
         if (!isOpen) return null;
 
-        /*
         const handleGetHint = async () => {
           setLoadingHint(true);
           setHint(null);
@@ -987,7 +1133,6 @@
           setHint(hintText);
           setLoadingHint(false);
         };
-        */
 
         const borderColor = theme.gridBg.replace('bg-', 'border-');
 
@@ -1017,7 +1162,6 @@
                     </div>
                 </div>
 
-                {/* 
                 <div className="mb-8">
                     <h3 className="text-lg font-bold mb-3 border-b border-gray-400/20 pb-2">{t.aiAssistant}</h3>
                     <div className="flex flex-col gap-3">
@@ -1037,7 +1181,6 @@
                     )}
                     </div>
                 </div>
-                */}
 
                 <div className="mb-8">
                     <h3 className="text-lg font-bold mb-3 border-b border-gray-400/20 pb-2">{t.settings}</h3>
@@ -1072,9 +1215,185 @@
         );
       };
 
-      // ----------------------------------------------------------------------
-      // MOUNT
-      // ----------------------------------------------------------------------
+      function App() {
+        const [gameState, setGameState] = useState(getInitialState);
+        const [theme, setTheme] = useState(THEMES.classic);
+        const [lang, setLang] = useState('en'); 
+        const [isKeepGoing, setIsKeepGoing] = useState(false);
+        const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+        const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+        
+        const touchStartRef = useRef(null);
+        const movingRef = useRef(false);
+        const boardRef = useRef(null);
+        
+        const t = TRANSLATIONS[lang];
+        const isModalOpen = isSaveModalOpen || isSettingsModalOpen;
+
+        const handleKeyDown = useCallback((e) => {
+          if (movingRef.current) return;
+          if (isModalOpen) return;
+          
+          let direction = null;
+          if (['ArrowUp', 'w', 'W'].includes(e.key)) direction = 'UP';
+          else if (['ArrowDown', 's', 'S'].includes(e.key)) direction = 'DOWN';
+          else if (['ArrowLeft', 'a', 'A'].includes(e.key)) direction = 'LEFT';
+          else if (['ArrowRight', 'd', 'D'].includes(e.key)) direction = 'RIGHT';
+
+          if (direction) {
+            e.preventDefault();
+            movingRef.current = true;
+            setGameState(prev => moveTiles(prev, direction));
+            setTimeout(() => { movingRef.current = false; }, 150); 
+          }
+        }, [isModalOpen]);
+
+        useEffect(() => {
+          window.addEventListener('keydown', handleKeyDown);
+          return () => window.removeEventListener('keydown', handleKeyDown);
+        }, [handleKeyDown]);
+
+        useEffect(() => {
+          const board = boardRef.current;
+          if (!board) return;
+          const preventDefault = (e) => e.preventDefault();
+          board.addEventListener('touchmove', preventDefault, { passive: false });
+          return () => board.removeEventListener('touchmove', preventDefault);
+        }, []);
+
+        const handleTouchStart = (e) => {
+          if (isModalOpen) return;
+          touchStartRef.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY
+          };
+        };
+
+        const handleTouchEnd = (e) => {
+          if (isModalOpen) return;
+          if (!touchStartRef.current) return;
+          const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+          const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          if (Math.max(absDx, absDy) > 30) { 
+            let direction = null;
+            if (absDx > absDy) {
+              direction = dx > 0 ? 'RIGHT' : 'LEFT';
+            } else {
+              direction = dy > 0 ? 'DOWN' : 'UP';
+            }
+            
+            if (direction) {
+              setGameState(prev => moveTiles(prev, direction));
+            }
+          }
+          touchStartRef.current = null;
+        };
+
+        const resetGame = () => {
+          setGameState(getInitialState());
+          setIsKeepGoing(false);
+        };
+
+        const keepGoing = () => {
+          setIsKeepGoing(true);
+          setGameState(prev => ({ ...prev, won: false }));
+        };
+        
+        const handleLoadGame = (newState) => {
+          restoreIdCounter(newState.tiles);
+          setGameState(newState);
+          setIsKeepGoing(false);
+        };
+
+        const showWon = gameState.won && !isKeepGoing;
+        const showOver = gameState.over;
+
+        return (
+          <div 
+            className={`fixed inset-0 w-full h-full flex items-center justify-center p-4 transition-colors duration-500 ${theme.appBg} overflow-hidden`}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="w-full h-full flex flex-col landscape:flex-row items-center justify-center gap-6 md:gap-12 landscape:gap-8 max-w-[500px] landscape:max-w-none">
+              
+              <div className="w-full flex flex-col gap-4 landscape:w-72 landscape:h-full landscape:justify-center shrink-0 z-10">
+                
+                <div className="flex justify-between items-center landscape:flex-col landscape:items-start landscape:gap-4">
+                  <h1 className={`text-5xl md:text-6xl font-extrabold ${theme.textColor} landscape:text-5xl xl:text-7xl`}>2048</h1>
+                  
+                  <div className="flex gap-2 w-full landscape:justify-start">
+                      <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
+                        <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.score}</div>
+                        <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.score}</div>
+                      </div>
+                      <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
+                        <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.best}</div>
+                        <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.bestScore}</div>
+                      </div>
+                  </div>
+                </div>
+
+                <ControlPanel 
+                  onNewGame={resetGame} 
+                  onOpenSaveModal={() => setIsSaveModalOpen(true)}
+                  onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+                  currentTheme={theme} 
+                  setTheme={setTheme}
+                  lang={lang}
+                  setLang={setLang}
+                />
+                
+                <div className={`hidden landscape:block mt-auto text-left ${theme.textColor} opacity-60 text-xs font-medium`}>
+                  <p>{t.howToPlay}</p>
+                  <p>{t.howToPlay2}</p>
+                </div>
+              </div>
+
+              <div 
+                  ref={boardRef}
+                  className="relative shrink-0 w-full max-w-[500px] portrait:max-w-[65vh] landscape:h-[85vh] landscape:w-auto landscape:aspect-square landscape:max-w-none landscape:max-h-[90vw]"
+              >
+                <Board 
+                  tiles={gameState.tiles} 
+                  theme={theme} 
+                  gameOver={showOver} 
+                  won={showWon}
+                  onTryAgain={resetGame}
+                  onKeepGoing={keepGoing}
+                  lang={lang}
+                />
+              </div>
+              
+              <div className={`landscape:hidden mt-2 text-center ${theme.textColor} opacity-60 text-sm font-medium z-10`}>
+                <p>{t.howToPlayMobile}</p>
+              </div>
+
+            </div>
+            
+            <SaveModal 
+              isOpen={isSaveModalOpen} 
+              onClose={() => setIsSaveModalOpen(false)} 
+              gameState={gameState} 
+              onLoadGame={handleLoadGame} 
+              theme={theme}
+              lang={lang}
+            />
+
+            <SettingsModal 
+              isOpen={isSettingsModalOpen}
+              onClose={() => setIsSettingsModalOpen(false)}
+              theme={theme}
+              lang={lang}
+              setLang={setLang}
+              gameState={gameState}
+            />
+          </div>
+        );
+      }
+
       const rootElement = document.getElementById('root');
       if (rootElement) {
         const root = ReactDOM.createRoot(rootElement);
