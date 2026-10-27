@@ -147,7 +147,7 @@ export const SaveModal: React.FC<SaveModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop">
-      <div className={`w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl ${theme.appBg} ${theme.textColor} border-2 border-black/10 dark:border-white/10 max-h-[92vh] overflow-y-auto`}>
+      <div className={`w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl ${theme.cardBg} ${theme.textColor} border-2 border-black/10 dark:border-white/10 max-h-[92vh] overflow-y-auto`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2.5">

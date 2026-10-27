@@ -60,6 +60,15 @@ function App() {
     }
   };
 
+  // Synchronize dark class to document root for Tailwind dark mode
+  useEffect(() => {
+    if (theme.isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme.isDark]);
+
   const handleSetLang = (newLang: Language) => {
     setLang(newLang);
     try {

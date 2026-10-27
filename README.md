@@ -1,20 +1,103 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Luminary 2048 🎮
 
-# Run and deploy your AI Studio app
+一款设计优雅、界面极具圆润美感、支持多色调自由切换的现代 2048 益智网页游戏。基于 **React 19**、**TypeScript** 与 **Tailwind CSS** 构建，带来丝滑饱满的交互动效与纯净的视觉享受。
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/drive/17VVbjSS9jw2TDL5dJ5bqXqZO4pJCrxfP
+## ✨ 核心特色
 
-## Run Locally
+### 🎨 8 款精选视觉色调（支持一键切换）
+内置 8 组经过精心色彩调优的主题调色盘，无论明亮还是暗黑风格，均具备舒适的色彩搭配与出色的文字对比度：
+1. **暖木经典 (Classic Warm)**：温暖复古的奶油原木与焦糖琥珀暖色。
+2. **曜石暗夜 (Obsidian Dark)**：沉稳冷峻的暗夜曜石背景配以荧亮彩色方块。
+3. **蜜桃甜心 (Sweet Bubblegum)**：甜系马卡龙粉搭配清爽果色。
+4. **冰川蔚蓝 (Glacier Ocean)**：澄澈深邃的冰川天青与蔚蓝深海质感。
+5. **抹茶青林 (Matcha Forest)**：自然清新的抹茶草木与苍翠绿意。
+6. **落日晚霞 (Sunset Amber)**：浓郁温暖的夕阳橙霞与红金霞光。
+7. **梦幻紫藤 (Lavender Violet)**：典雅浪漫的香芋紫与紫罗兰渐进色。
+8. **赛博荧光 (Cyber Neon)**：极客黑底搭配发光青蓝与高对比霓虹。
 
-**Prerequisites:**  Node.js
+> **智能暗色模式适配**：暗色主题（曜石暗夜、赛博荧光）与亮色主题自动切换全局 Tailwind 暗色模式，弹窗、卡片、输入框与状态文字随主题无缝联动。
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 🫧 极具圆润的触感美学
+- **饱满圆润方块**：棋盘外框、背景槽位与数字方块均采用大曲率圆角设计（`rounded-3xl` / `rounded-2xl`），带来如同软糖般的视觉质感。
+- **生动物理动效**：
+  - 新生成方块带有 Q 弹入场动效（Pop In）；
+  - 合成相同数字时触发弹性挤压跳跃（Merge Bounce）；
+  - 得分时实时上浮飘字（`+4`、`+8`……）；
+  - 色调切换时全场方块平滑淡入渐变（Crossfade Transitions）。
+
+---
+
+### ↩️ 支持多次连续撤销
+- 底层维护了可回溯至最多 **60 步**的历史操作快照栈（包含棋盘与对应分数）。
+- 玩家只要发生过滑块移动，即可随时无限次回退失误走法，无需担心手滑打断高分节奏。
+
+---
+
+### 🎵 原生 Web Audio 纯代码音效
+- 纯代码利用浏览器原生 **Web Audio API** 振荡器实时合成轻柔提示音，无需加载任何外部音频文件：
+  - **滑动音效**：轻快短促的低频微风声；
+  - **合成音效**：清脆悦耳的泡泡声，且音调随着合成数值的翻倍逐级升高；
+  - **通关音效**：达成 2048 时的多音符和弦胜出提示；
+  - 提供一键静音切换，偏好自动持久化。
+
+---
+
+### 💾 全能存档与数据备份
+- **浏览器快速存档**：一键将当前对局存入本地存储（Local Storage）。
+- **存档代码分享**：生成轻量 Base64 存档字符，便于复制粘贴转移进度。
+- **JSON 文件导入与导出**：支持一键导出包含历史快照的 `.json` 备份文件，换设备随时导入恢复。
+
+---
+
+### 🌐 纯净矢量设计
+- 全站界面彻底摒弃系统 emoji，所有功能图标（撤销、新游戏、调色盘、齿轮设置、磁盘存档、音效、语言、胜利奖杯等）统一采用极简利落的 **SVG 矢量图标**，视觉风格高度一体化。
+- **中英双语支持**：支持简体中文与 English 一键即时无缝切换。
+
+---
+
+## 🕹️ 游戏规则与操作指南
+
+### 游戏规则
+1. 棋盘为 $4 \times 4$ 网格，每次移动会在随机空白格子生成一个数字（2 或 4）。
+2. 当两个具有相同数值的方块发生碰撞时，它们会融合成一个数值翻倍的新方块。
+3. 尽可能在棋盘被填满前合成出 **2048** 甚至更高数值（4096、8192…）。
+4. 达成 2048 后，可选择继续挑战更高无尽极限！
+
+### 控制方式
+- **键盘操作**：方向键（`↑` `↓` `←` `→`）或 `W` `A` `S` `D`。
+- **触摸操作**：在手机或触屏设备上直接向上下左右滑动屏幕。
+
+---
+
+## 💻 技术栈
+
+- **框架**：React 19 + TypeScript
+- **构建工具**：Vite 6
+- **样式方案**：Tailwind CSS（支持类名动态暗色模式与自定义圆角动画）
+- **音频系统**：Web Audio API
+- **数据存储**：Web Storage API（LocalStorage）+ Base64 JSON
+
+---
+
+## 🚀 本地开发与构建
+
+### 环境要求
+- Node.js (推荐 v18 及以上)
+- npm / yarn / pnpm / bun
+
+### 启动项目
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 启动本地开发服务器
+npm run dev
+
+# 3. 打包生产版本
+npm run build
+```
+在浏览器中打开 `http://localhost:3000` 即可开始游玩。

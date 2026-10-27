@@ -11,7 +11,7 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
   const x = tile.col * 25;
   const y = tile.row * 25;
 
-  const colorClass = theme.tileColors[tile.value] || theme.tileColors[2048] || 'bg-gray-900 text-white';
+  const colorClass = theme.tileColors[tile.value] || theme.tileColors[2048] || 'bg-gray-900';
   const textColorClass = theme.tileTextColors[tile.value] || 'text-white';
   
   // Font sizing based on number length
@@ -36,7 +36,7 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
       <div
         className={`
           w-full h-full rounded-2xl sm:rounded-3xl flex items-center justify-center font-black select-none
-          shadow-md transition-shadow
+          shadow-md transition-all duration-300
           ${colorClass} ${textColorClass} ${fontSize}
           ${tile.isNew ? 'animate-pop' : ''}
           ${tile.isMerged ? 'animate-merge' : ''}

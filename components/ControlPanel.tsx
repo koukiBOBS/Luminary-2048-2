@@ -98,7 +98,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 }}
                 className={`group relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer ${
                   isSelected
-                    ? 'ring-3 ring-offset-2 ring-current scale-115 shadow-md'
+                    ? 'scale-110 shadow-lg ring-2 ring-white/90 ring-offset-2 ring-offset-black/25'
                     : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 style={{
