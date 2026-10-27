@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { THEMES, TRANSLATIONS } from './constants';
-import { getInitialState, moveTiles } from './services/gameLogic';
+import { getInitialState, moveTiles, undoMove, restoreIdCounter } from './services/gameLogic';
+import { sound } from './services/soundService';
 import { Board } from './components/Board';
 import { ControlPanel } from './components/ControlPanel';
 import { SaveModal } from './components/SaveModal';
@@ -8,23 +9,103 @@ import { SettingsModal } from './components/SettingsModal';
 import { Direction, GameState, Theme, Language } from './types';
 
 function App() {
+  // Theme state with local persistence
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const savedThemeId = localStorage.getItem('luminary2048-theme');
+      if (savedThemeId && THEMES[savedThemeId]) {
+        return THEMES[savedThemeId];
+      }
+    } catch {
+      // fallback
+    }
+    return THEMES.classic;
+  });
+
+  // Language state with browser preference detection
+  const [lang, setLang] = useState<Language>(() => {
+    try {
+      const savedLang = localStorage.getItem('luminary2048-lang');
+      if (savedLang === 'zh' || savedLang === 'en') return savedLang;
+      if (typeof navigator !== 'undefined' && navigator.language?.startsWith('zh')) {
+        return 'zh';
+      }
+    } catch {
+      // fallback
+    }
+    return 'zh';
+  });
+
   const [gameState, setGameState] = useState<GameState>(getInitialState);
-  const [theme, setTheme] = useState<Theme>(THEMES.classic);
-  const [lang, setLang] = useState<Language>('en'); // Default language
   const [isKeepGoing, setIsKeepGoing] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  
-  const touchStartRef = useRef<{ x: number, y: number } | null>(null);
+  const [isMuted, setIsMuted] = useState(() => sound.getMuted());
+  const [recentScoreGain, setRecentScoreGain] = useState<number | null>(null);
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const movingRef = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
-  
+
   const t = TRANSLATIONS[lang];
   const isModalOpen = isSaveModalOpen || isSettingsModalOpen;
 
-  // Keyboard input
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+  // Persist theme & lang
+  const handleSetTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem('luminary2048-theme', newTheme.id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSetLang = (newLang: Language) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem('luminary2048-lang', newLang);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    sound.setMuted(nextMuted);
+  };
+
+  // Perform directional move
+  const executeMove = useCallback((direction: Direction) => {
     if (movingRef.current) return;
+    if (gameState.over) return;
+
+    movingRef.current = true;
+    setGameState(prev => {
+      const result = moveTiles(prev, direction);
+      if (result.moved) {
+        if (result.scoreToAdd > 0) {
+          sound.playMerge(result.scoreToAdd);
+          setRecentScoreGain(result.scoreToAdd);
+          setTimeout(() => setRecentScoreGain(null), 800);
+        } else {
+          sound.playMove();
+        }
+
+        if (result.nextState.won && !prev.won) {
+          sound.playWin();
+        }
+      }
+      return result.nextState;
+    });
+
+    setTimeout(() => {
+      movingRef.current = false;
+    }, 150);
+  }, [gameState.over]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (isModalOpen) return;
     
     let direction: Direction | null = null;
@@ -35,42 +116,42 @@ function App() {
 
     if (direction) {
       e.preventDefault();
-      movingRef.current = true;
-      setGameState(prev => moveTiles(prev, direction!));
-      setTimeout(() => { movingRef.current = false; }, 150); // Matches animation duration
+      executeMove(direction);
     }
-  }, [isModalOpen]);
+  }, [isModalOpen, executeMove]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  // Prevent default scroll on board touch
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
-    const preventDefault = (e: TouchEvent) => e.preventDefault();
-    board.addEventListener('touchmove', preventDefault, { passive: false });
-    return () => board.removeEventListener('touchmove', preventDefault);
+    const preventScroll = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    board.addEventListener('touchmove', preventScroll, { passive: false });
+    return () => board.removeEventListener('touchmove', preventScroll);
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isModalOpen) return;
     touchStartRef.current = {
       x: e.touches[0].clientX,
-      y: e.touches[0].clientY
+      y: e.touches[0].clientY,
     };
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isModalOpen) return;
-    if (!touchStartRef.current) return;
+    if (isModalOpen || !touchStartRef.current) return;
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
     const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    if (Math.max(absDx, absDy) > 30) { 
+    if (Math.max(absDx, absDy) > 25) { 
       let direction: Direction | null = null;
       if (absDx > absDy) {
         direction = dx > 0 ? 'RIGHT' : 'LEFT';
@@ -79,7 +160,7 @@ function App() {
       }
       
       if (direction) {
-         setGameState(prev => moveTiles(prev, direction!));
+        executeMove(direction);
       }
     }
     touchStartRef.current = null;
@@ -90,12 +171,18 @@ function App() {
     setIsKeepGoing(false);
   };
 
+  const handleUndo = () => {
+    setGameState(prev => undoMove(prev));
+    sound.playMove();
+  };
+
   const keepGoing = () => {
     setIsKeepGoing(true);
     setGameState(prev => ({ ...prev, won: false }));
   };
   
   const handleLoadGame = (newState: GameState) => {
+    restoreIdCounter(newState.tiles);
     setGameState(newState);
     setIsKeepGoing(false);
   };
@@ -105,50 +192,82 @@ function App() {
 
   return (
     <div 
-      className={`fixed inset-0 w-full h-full flex items-center justify-center p-4 transition-colors duration-500 ${theme.appBg} overflow-hidden`}
+      className={`fixed inset-0 w-full h-full flex items-center justify-center p-3 sm:p-5 transition-colors duration-500 ${theme.appBg} overflow-hidden select-none`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="w-full h-full flex flex-col landscape:flex-row items-center justify-center gap-6 md:gap-12 landscape:gap-8 max-w-[500px] landscape:max-w-none">
+      <div className="w-full h-full flex flex-col landscape:flex-row items-center justify-center gap-4 sm:gap-6 landscape:gap-8 max-w-[460px] landscape:max-w-none">
         
-        {/* Left/Top Column: Header, Scores, Controls */}
-        <div className="w-full flex flex-col gap-4 landscape:w-72 landscape:h-full landscape:justify-center shrink-0 z-10">
+        {/* Left / Top Column: Header, Scores, Controls */}
+        <div className="w-full flex flex-col gap-3 sm:gap-4 landscape:w-80 landscape:h-full landscape:justify-center shrink-0 z-10">
           
-          <div className="flex justify-between items-center landscape:flex-col landscape:items-start landscape:gap-4">
-             <h1 className={`text-5xl md:text-6xl font-extrabold ${theme.textColor} landscape:text-5xl xl:text-7xl`}>2048</h1>
+          {/* Header Row: Title & Scores */}
+          <div className="flex items-center justify-between landscape:flex-col landscape:items-start landscape:gap-3">
+            <div className="flex items-baseline gap-2">
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black tracking-tight ${theme.textColor}`}>
+                2048
+              </h1>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 ${theme.textColor} opacity-75`}>
+                {lang === 'zh' ? theme.nameZh : theme.name}
+              </span>
+            </div>
              
-             <div className="flex gap-2 w-full landscape:justify-start">
-                <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
-                   <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.score}</div>
-                   <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.score}</div>
+            {/* Score & Best Cards */}
+            <div className="flex gap-2 min-w-[170px] sm:min-w-[190px]">
+              {/* Score */}
+              <div className={`relative ${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm`}>
+                <div className={`text-[10px] font-black uppercase tracking-wider ${theme.scoreText} opacity-75`}>
+                  {t.score}
                 </div>
-                <div className={`${theme.scoreBg} flex-1 p-2 px-3 rounded-xl min-w-[70px] text-center shadow-sm`}>
-                   <div className={`text-[10px] font-bold uppercase ${theme.scoreText} opacity-70`}>{t.best}</div>
-                   <div className={`text-xl font-bold ${theme.scoreText}`}>{gameState.bestScore}</div>
+                <div className={`text-lg sm:text-xl font-black ${theme.scoreText}`}>
+                  {gameState.score}
                 </div>
-             </div>
+                {/* Floating Score Popup */}
+                {recentScoreGain && (
+                  <div className="absolute -top-3 right-2 text-xs font-black text-emerald-500 animate-pop">
+                    +{recentScoreGain}
+                  </div>
+                )}
+              </div>
+
+              {/* Best */}
+              <div className={`${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm`}>
+                <div className={`text-[10px] font-black uppercase tracking-wider ${theme.scoreText} opacity-75`}>
+                  {t.best}
+                </div>
+                <div className={`text-lg sm:text-xl font-black ${theme.scoreText}`}>
+                  {gameState.bestScore}
+                </div>
+              </div>
+            </div>
           </div>
 
+          {/* Rounded Control Panel with 8 Themes */}
           <ControlPanel 
-            onNewGame={resetGame} 
+            onNewGame={resetGame}
+            onUndo={handleUndo}
+            canUndo={(gameState.history?.length || 0) > 0}
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
             onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             currentTheme={theme} 
-            setTheme={setTheme}
+            setTheme={handleSetTheme}
             lang={lang}
-            setLang={setLang}
+            setLang={handleSetLang}
+            isMuted={isMuted}
+            onToggleMute={handleToggleMute}
           />
           
+          {/* Landscape Instructions */}
           <div className={`hidden landscape:block mt-auto text-left ${theme.textColor} opacity-60 text-xs font-medium`}>
-             <p>{t.howToPlay}</p>
-             <p>{t.howToPlay2}</p>
+            <p className="font-bold">{t.howToPlay}</p>
+            <p>{t.howToPlay2}</p>
           </div>
         </div>
 
-        {/* Right/Bottom Column: Board */}
+        {/* Right / Bottom Column: Game Board */}
         <div 
-            ref={boardRef}
-            className="relative shrink-0 w-full max-w-[500px] portrait:max-w-[65vh] landscape:h-[85vh] landscape:w-auto landscape:aspect-square landscape:max-w-none landscape:max-h-[90vw]"
+          ref={boardRef}
+          className="relative shrink-0 w-full max-w-[420px] portrait:max-w-[70vh] landscape:h-[82vh] landscape:w-auto landscape:aspect-square landscape:max-w-none landscape:max-h-[88vw]"
         >
           <Board 
             tiles={gameState.tiles} 
@@ -162,12 +281,13 @@ function App() {
         </div>
         
         {/* Mobile Portrait Instructions */}
-        <div className={`landscape:hidden mt-2 text-center ${theme.textColor} opacity-60 text-sm font-medium z-10`}>
-           <p>{t.howToPlayMobile}</p>
+        <div className={`landscape:hidden text-center ${theme.textColor} opacity-60 text-xs font-bold z-10`}>
+          <p>{t.howToPlayMobile}</p>
         </div>
 
       </div>
       
+      {/* Save / Archive Modal */}
       <SaveModal 
         isOpen={isSaveModalOpen} 
         onClose={() => setIsSaveModalOpen(false)} 
@@ -177,13 +297,17 @@ function App() {
         lang={lang}
       />
 
+      {/* Settings Modal */}
       <SettingsModal 
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         theme={theme}
+        setTheme={handleSetTheme}
         lang={lang}
-        setLang={setLang}
+        setLang={handleSetLang}
         gameState={gameState}
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
       />
     </div>
   );

@@ -11,6 +11,11 @@ export interface TileData {
   isDying?: boolean; // Used for animation: tile slides to destination before being removed
 }
 
+export interface GameHistorySnapshot {
+  tiles: TileData[];
+  score: number;
+}
+
 export interface GameState {
   tiles: TileData[];
   score: number;
@@ -18,18 +23,26 @@ export interface GameState {
   won: boolean;
   over: boolean;
   lastMoveDirection: Direction | null;
+  history?: GameHistorySnapshot[];
 }
 
 export interface Theme {
+  id: string;
   name: string;
+  nameZh: string;
+  dotColor: string; // Color preview for the quick switcher
   appBg: string;
+  cardBg: string;
   gridBg: string;
   emptyCellBg: string;
   textColor: string;
+  mutedTextColor: string;
   scoreBg: string;
   scoreText: string;
   buttonBg: string;
   buttonText: string;
+  buttonHoverBg?: string;
+  secondaryButtonBg: string;
   tileColors: Record<number, string>;
-  tileTextColors: Record<number, string>; // Sometimes we need dark text on light tiles
+  tileTextColors: Record<number, string>;
 }
