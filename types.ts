@@ -28,10 +28,8 @@ export interface GameState {
 
 export interface Theme {
   id: string;
-  name: string;
-  nameZh: string;
+  dotColor: string; // Color preview for the visual switcher
   isDark: boolean; // Flag to activate dark mode styling on UI elements
-  dotColor: string; // Color preview for the quick switcher
   appBg: string; // Solid background for app viewport
   cardBg: string; // Solid background for modals & cards
   gridBg: string; // Board background

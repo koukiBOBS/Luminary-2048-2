@@ -1,12 +1,14 @@
 import React from 'react';
 import { GameState, Theme, Language } from '../types';
-import { THEMES, TRANSLATIONS } from '../constants';
+import { THEME_SWATCHES, TRANSLATIONS } from '../constants';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  onSelectThemeId: (themeId: string) => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
   lang: Language;
   setLang: (lang: Language) => void;
   gameState: GameState;
@@ -18,14 +20,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen, 
   onClose, 
   theme, 
-  setTheme,
+  onSelectThemeId,
+  isDarkMode,
+  onToggleDarkMode,
   lang, 
-  setLang,
-  isMuted,
-  onToggleMute
+  setLang, 
+  isMuted, 
+  onToggleMute 
 }) => {
   const t = TRANSLATIONS[lang];
-  const allThemes = Object.values(THEMES);
 
   if (!isOpen) return null;
 
@@ -38,7 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Cog SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500">
               <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
             <span>{t.settings}</span>
           </h2>
@@ -52,7 +55,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Scrollable Body */}
         <div className="p-6 pt-4 overflow-y-auto flex-1 space-y-6">
-          {/* Theme Palette Gallery (切换色调) */}
+          {/* Tone Swatches (No Names) */}
           <div>
             <h3 className="text-sm font-black uppercase opacity-75 tracking-wider mb-3 flex items-center gap-2">
               {/* Palette SVG */}
@@ -65,38 +68,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </svg>
               <span>{t.themeSelector}</span>
             </h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              {allThemes.map((item) => {
-                const isSelected = theme.id === item.id;
+            
+            {/* Visual Swatch Grid (No Names) */}
+            <div className="grid grid-cols-6 gap-2.5 p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+              {THEME_SWATCHES.map((swatch) => {
+                const isSelected = theme.id === swatch.id;
                 return (
                   <button
-                    key={item.id}
-                    onClick={() => setTheme(item)}
-                    className={`p-3 rounded-2xl flex items-center gap-2.5 text-left border-2 transition-all cursor-pointer ${
+                    key={swatch.id}
+                    onClick={() => onSelectThemeId(swatch.id)}
+                    className={`aspect-square rounded-2xl flex items-center justify-center transition-all cursor-pointer relative ${
                       isSelected
-                        ? 'border-current bg-black/10 dark:bg-white/15 shadow-md scale-[1.02]'
-                        : 'border-transparent bg-black/5 dark:bg-white/5 hover:bg-black/10 opacity-80'
+                        ? 'scale-110 shadow-lg ring-2 ring-white/90 ring-offset-2 ring-offset-black/20'
+                        : 'opacity-75 hover:opacity-100 hover:scale-105'
                     }`}
+                    style={{ backgroundColor: swatch.dotColor }}
+                    aria-label={swatch.id}
                   >
-                    <div 
-                      className="w-6 h-6 rounded-full shrink-0 shadow-sm border border-black/10" 
-                      style={{ backgroundColor: item.dotColor }}
-                    />
-                    <div className="truncate">
-                      <div className="font-bold text-xs truncate">
-                        {lang === 'zh' ? item.nameZh : item.name}
-                      </div>
-                      <div className="text-[10px] opacity-60 truncate">
-                        {item.name}
-                      </div>
-                    </div>
+                    {isSelected && (
+                      <div className="w-3 h-3 rounded-full bg-white shadow-md" />
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Sound & Language Toggles */}
+          {/* Preferences: Day/Night, Sound, Language */}
           <div>
             <h3 className="text-sm font-black uppercase opacity-75 tracking-wider mb-3 flex items-center gap-2">
               {/* Sliders SVG */}
@@ -115,6 +113,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </h3>
             
             <div className="space-y-2.5">
+              {/* Day / Night Mode Toggle */}
+              <div className="flex items-center justify-between bg-black/5 dark:bg-white/10 p-3.5 rounded-2xl">
+                <span className="font-bold text-sm flex items-center gap-2">
+                  {isDarkMode ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                      <circle cx="12" cy="12" r="5"/>
+                      <line x1="12" y1="1" x2="12" y2="3"/>
+                      <line x1="12" y1="21" x2="12" y2="23"/>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                      <line x1="1" y1="12" x2="3" y2="12"/>
+                      <line x1="21" y1="12" x2="23" y2="12"/>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                  )}
+                  <span>{isDarkMode ? t.nightMode : t.dayMode}</span>
+                </span>
+                <button
+                  onClick={onToggleDarkMode}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm flex items-center gap-1.5 ${
+                    isDarkMode
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-amber-500 text-white'
+                  }`}
+                >
+                  <span>{isDarkMode ? t.nightMode : t.dayMode}</span>
+                </button>
+              </div>
+
               {/* Sound */}
               <div className="flex items-center justify-between bg-black/5 dark:bg-white/10 p-3.5 rounded-2xl">
                 <span className="font-bold text-sm flex items-center gap-2">
@@ -147,57 +179,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </svg>
                   <span>{t.language}</span>
                 </span>
-                <div className="flex bg-black/10 dark:bg-black/30 p-1 rounded-xl">
-                  <button 
-                    onClick={() => setLang('en')}
-                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      lang === 'en' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    English
-                  </button>
+                <div className="flex bg-black/10 dark:bg-white/10 p-1 rounded-xl">
                   <button 
                     onClick={() => setLang('zh')}
                     className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                       lang === 'zh' 
-                        ? 'bg-white text-gray-900 shadow-sm' 
+                        ? 'bg-white dark:bg-slate-800 text-black dark:text-white shadow-sm' 
                         : 'opacity-60 hover:opacity-100'
                     }`}
                   >
                     中文
+                  </button>
+                  <button 
+                    onClick={() => setLang('en')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      lang === 'en' 
+                        ? 'bg-white dark:bg-slate-800 text-black dark:text-white shadow-sm' 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    EN
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tutorial / Rules */}
-          <div>
-            <h3 className="text-sm font-black uppercase opacity-75 tracking-wider mb-3 flex items-center gap-2">
-              {/* Book SVG */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          {/* Tutorial & Rules */}
+          <div className="bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-black/10 dark:border-white/10 space-y-2">
+            <h4 className="font-bold text-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
               </svg>
               <span>{t.tutorial}</span>
-            </h3>
-            <div className="bg-black/5 dark:bg-white/10 rounded-2xl p-4 text-xs sm:text-sm leading-relaxed space-y-2">
-              <p className="font-bold">{t.tutorialText}</p>
-              <ul className="list-disc list-inside opacity-85 space-y-1.5 ml-1">
-                <li>{t.tutorialControl}</li>
-                <li>{t.tutorialGoal}</li>
-                <li>{lang === 'zh' ? '支持多次“撤销”走法，随时步步回退挽救失误。' : 'Multiple undos available to step back and rescue accidental moves.'}</li>
-              </ul>
-            </div>
+            </h4>
+            <p className="text-xs opacity-80 leading-relaxed">{t.tutorialText}</p>
+            <p className="text-xs opacity-80 leading-relaxed">{t.tutorialGoal}</p>
+            <p className="text-xs opacity-75 leading-relaxed font-semibold">{t.tutorialControl}</p>
           </div>
+        </div>
 
-          {/* About */}
-          <div className="text-center opacity-50 text-xs pt-2 pb-1">
-            <p className="font-bold">Luminary 2048</p>
-            <p>{t.version}</p>
-          </div>
+        {/* Footer */}
+        <div className="p-4 bg-inherit border-t border-black/10 dark:border-white/10 flex justify-end">
+          <button
+            onClick={onClose}
+            className={`px-6 py-2 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer ${theme.buttonBg} ${theme.buttonText}`}
+          >
+            {t.close}
+          </button>
         </div>
       </div>
     </div>

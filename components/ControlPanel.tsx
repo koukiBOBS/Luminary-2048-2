@@ -1,5 +1,5 @@
 import React from 'react';
-import { THEMES, TRANSLATIONS } from '../constants';
+import { THEME_SWATCHES, TRANSLATIONS } from '../constants';
 import { Theme, Language } from '../types';
 
 interface ControlPanelProps {
@@ -9,7 +9,9 @@ interface ControlPanelProps {
   onOpenSaveModal: () => void;
   onOpenSettingsModal: () => void;
   currentTheme: Theme;
-  setTheme: (theme: Theme) => void;
+  onSelectThemeId: (themeId: string) => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
   lang: Language;
   setLang: (lang: Language) => void;
   isMuted: boolean;
@@ -23,14 +25,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onOpenSaveModal,
   onOpenSettingsModal,
   currentTheme, 
-  setTheme,
+  onSelectThemeId,
+  isDarkMode,
+  onToggleDarkMode,
   lang,
   setLang,
   isMuted,
   onToggleMute,
 }) => {
   const t = TRANSLATIONS[lang];
-  const allThemes = Object.values(THEMES);
 
   return (
     <div className="flex flex-col gap-3 w-full relative z-20">
@@ -69,8 +72,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </button>
       </div>
 
-      {/* Theme Tones Bar (切换色调) */}
-      <div className="flex flex-col gap-1.5 p-2.5 rounded-2xl bg-black/5 dark:bg-white/10 backdrop-blur-md">
+      {/* Tone Swatches Bar + Day/Night Toggle (No Theme Names) */}
+      <div className="flex flex-col gap-2 p-2.5 rounded-2xl bg-black/5 dark:bg-white/10 backdrop-blur-md">
         <div className="flex items-center justify-between px-1">
           <span className={`text-[11px] font-bold uppercase tracking-wider opacity-75 flex items-center gap-1.5 ${currentTheme.textColor}`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -81,33 +84,64 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"/>
             </svg>
             <span>{t.themeSelector}</span>
-            <span className="opacity-75">({lang === 'zh' ? currentTheme.nameZh : currentTheme.name})</span>
           </span>
-          <span className="text-[10px] font-semibold opacity-60">8 {lang === 'zh' ? '种色调' : 'tones'}</span>
+
+          {/* Day / Night Mode Switch Button with SVG */}
+          <button
+            onClick={onToggleDarkMode}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${
+              isDarkMode 
+                ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-400/30 hover:bg-indigo-600/40' 
+                : 'bg-amber-500/20 text-amber-800 border border-amber-500/30 hover:bg-amber-500/30'
+            }`}
+            title={isDarkMode ? t.dayMode : t.nightMode}
+          >
+            {isDarkMode ? (
+              /* Moon SVG Icon */
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-300">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            ) : (
+              /* Sun SVG Icon */
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            )}
+            <span>{isDarkMode ? t.nightMode : t.dayMode}</span>
+          </button>
         </div>
 
-        <div className="flex items-center justify-between gap-1.5 overflow-x-auto py-1 px-0.5">
-          {allThemes.map((themeOption) => {
-            const isSelected = currentTheme.id === themeOption.id;
+        {/* Circular Color Swatches (No Text / No Names) */}
+        <div className="flex items-center justify-between gap-2 py-1 px-1">
+          {THEME_SWATCHES.map((swatch) => {
+            const isSelected = currentTheme.id === swatch.id;
             return (
               <button
-                key={themeOption.id}
+                key={swatch.id}
                 onClick={(e) => {
                   e.preventDefault();
-                  setTheme(themeOption);
+                  onSelectThemeId(swatch.id);
                 }}
                 className={`group relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer ${
                   isSelected
-                    ? 'scale-110 shadow-lg ring-2 ring-white/90 ring-offset-2 ring-offset-black/25'
+                    ? 'scale-115 shadow-md ring-2 ring-white/90 dark:ring-white/80 ring-offset-2 ring-offset-black/20'
                     : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 style={{
-                  backgroundColor: themeOption.dotColor,
+                  backgroundColor: swatch.dotColor,
                 }}
-                title={lang === 'zh' ? themeOption.nameZh : themeOption.name}
+                aria-label={swatch.id}
               >
                 {isSelected && (
-                  <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" />
                 )}
               </button>
             );

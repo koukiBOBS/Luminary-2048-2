@@ -1,25 +1,39 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { THEMES, TRANSLATIONS } from './constants';
+import { getTheme, TRANSLATIONS } from './constants';
 import { getInitialState, moveTiles, undoMove, restoreIdCounter } from './services/gameLogic';
 import { sound } from './services/soundService';
 import { Board } from './components/Board';
 import { ControlPanel } from './components/ControlPanel';
 import { SaveModal } from './components/SaveModal';
 import { SettingsModal } from './components/SettingsModal';
-import { Direction, GameState, Theme, Language } from './types';
+import { Direction, GameState, Language } from './types';
 
 function App() {
-  // Theme state with local persistence
-  const [theme, setTheme] = useState<Theme>(() => {
+  // Theme ID state with local persistence
+  const [themeId, setThemeId] = useState<string>(() => {
     try {
       const savedThemeId = localStorage.getItem('luminary2048-theme');
-      if (savedThemeId && THEMES[savedThemeId]) {
-        return THEMES[savedThemeId];
+      if (savedThemeId && ['classic', 'ocean', 'forest', 'peach', 'lavender', 'coral'].includes(savedThemeId)) {
+        return savedThemeId;
       }
     } catch {
       // fallback
     }
-    return THEMES.classic;
+    return 'classic';
+  });
+
+  // Day/Night mode state with local persistence and system preference fallback
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('luminary2048-darkmode');
+      if (saved !== null) return saved === 'true';
+      if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return true;
+      }
+    } catch {
+      // fallback
+    }
+    return false;
   });
 
   // Language state with browser preference detection
@@ -50,24 +64,38 @@ function App() {
   const t = TRANSLATIONS[lang];
   const isModalOpen = isSaveModalOpen || isSettingsModalOpen;
 
-  // Persist theme & lang
-  const handleSetTheme = (newTheme: Theme) => {
-    setTheme(newTheme);
+  // Active computed theme
+  const theme = getTheme(themeId, isDarkMode);
+
+  const handleSelectThemeId = (newId: string) => {
+    setThemeId(newId);
     try {
-      localStorage.setItem('luminary2048-theme', newTheme.id);
+      localStorage.setItem('luminary2048-theme', newId);
     } catch {
       // ignore
     }
   };
 
+  const handleToggleDarkMode = () => {
+    setIsDarkMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('luminary2048-darkmode', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   // Synchronize dark class to document root for Tailwind dark mode
   useEffect(() => {
-    if (theme.isDark) {
+    if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [theme.isDark]);
+  }, [isDarkMode]);
 
   const handleSetLang = (newLang: Language) => {
     setLang(newLang);
@@ -210,16 +238,11 @@ function App() {
         {/* Left / Top Column: Header, Scores, Controls */}
         <div className="w-full flex flex-col gap-3 sm:gap-4 landscape:w-80 landscape:h-full landscape:justify-center shrink-0 z-10">
           
-          {/* Header Row: Title & Scores */}
+          {/* Header Row: Title & Scores (No theme names) */}
           <div className="flex items-center justify-between landscape:flex-col landscape:items-start landscape:gap-3">
-            <div className="flex items-baseline gap-2">
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black tracking-tight ${theme.textColor}`}>
-                2048
-              </h1>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 ${theme.textColor} opacity-75`}>
-                {lang === 'zh' ? theme.nameZh : theme.name}
-              </span>
-            </div>
+            <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black tracking-tight ${theme.textColor}`}>
+              2048
+            </h1>
              
             {/* Score & Best Cards */}
             <div className="flex gap-2 min-w-[170px] sm:min-w-[190px]">
@@ -251,7 +274,7 @@ function App() {
             </div>
           </div>
 
-          {/* Rounded Control Panel with 8 Themes */}
+          {/* Rounded Control Panel with Tone Swatches & Day/Night Toggle */}
           <ControlPanel 
             onNewGame={resetGame}
             onUndo={handleUndo}
@@ -259,7 +282,9 @@ function App() {
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
             onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             currentTheme={theme} 
-            setTheme={handleSetTheme}
+            onSelectThemeId={handleSelectThemeId}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={handleToggleDarkMode}
             lang={lang}
             setLang={handleSetLang}
             isMuted={isMuted}
@@ -311,7 +336,9 @@ function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         theme={theme}
-        setTheme={handleSetTheme}
+        onSelectThemeId={handleSelectThemeId}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
         lang={lang}
         setLang={handleSetLang}
         gameState={gameState}
