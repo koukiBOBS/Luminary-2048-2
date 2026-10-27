@@ -101,3 +101,26 @@ npm run dev
 npm run build
 ```
 在浏览器中打开 `http://localhost:3000` 即可开始游玩。
+
+---
+
+## 🌐 部署至 GitHub Pages
+
+本项目已在 `vite.config.ts` 中配置了 `base: './'` 相对路径，确保在 GitHub Pages 二级子路径（如 `https://<用户名>.github.io/<仓库名>/`）下资源文件能够精准加载，不会出现白屏 404 错误。
+
+### 方法 1：使用 GitHub Actions 自动部署（推荐）
+仓库内已内置 `.github/workflows/deploy.yml` 自动化工作流：
+1. 将代码推送到 GitHub 仓库的 `main` 分支；
+2. 进入仓库的 **Settings** -> **Pages**；
+3. 在 **Build and deployment** 下方的 **Source** 中选择 **GitHub Actions**；
+4. 每次 push 将自动完成构建并自动发布至 GitHub Pages。
+
+### 方法 2：使用 gh-pages 分支或本地部署
+```bash
+# 构建生成 dist 文件夹
+npm run build
+
+# 安装并使用 gh-pages 部署
+npx gh-pages -d dist
+```
+然后在 GitHub 仓库 **Settings** -> **Pages** 中将 Source 设置为 `Deploy from a branch` 并选择 `gh-pages` 分支即可。

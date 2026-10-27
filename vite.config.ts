@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => {
   const apiKey = env.GEMINI_API_KEY || env.API_KEY || '';
 
   return {
+    // Relative base path ensures assets resolve correctly on GitHub Pages (e.g. https://<user>.github.io/<repo>/)
+    base: './',
     server: {
       port: 3000,
       host: '0.0.0.0',
