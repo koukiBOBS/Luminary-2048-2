@@ -104,23 +104,22 @@ npm run build
 
 ---
 
-## 🌐 部署至 GitHub Pages
+## 🌐 部署至 GitHub Pages（告别白屏，无需 GitHub Actions）
 
-本项目已在 `vite.config.ts` 中配置了 `base: './'` 相对路径，确保在 GitHub Pages 二级子路径（如 `https://<用户名>.github.io/<仓库名>/`）下资源文件能够精准加载，不会出现白屏 404 错误。
+为什么在 AI Studio 正常，而直接推送到 GitHub Pages 会白屏？
+> **核心原因（绝非浏览器兼容问题）**：AI Studio 内部运行了 Node.js Vite 开发服务器，会在请求时实时将 TypeScript/React（`index.tsx`）编译为浏览器可执行的 JavaScript。而 GitHub Pages 是纯静态文件服务器，没有任何 Node.js 编译环境，**任何浏览器都无法直接解析 `.tsx` 源代码**。
 
-### 方法 1：使用 GitHub Actions 自动部署（推荐）
-仓库内已内置 `.github/workflows/deploy.yml` 自动化工作流：
-1. 将代码推送到 GitHub 仓库的 `main` 分支；
-2. 进入仓库的 **Settings** -> **Pages**；
-3. 在 **Build and deployment** 下方的 **Source** 中选择 **GitHub Actions**；
-4. 每次 push 将自动完成构建并自动发布至 GitHub Pages。
+本项目已专门配置，**无需编写或运行任何 GitHub Actions 工作流**，即可通过 GitHub 自带的自动部署直接运行：
 
-### 方法 2：使用 gh-pages 分支或本地部署
-```bash
-# 构建生成 dist 文件夹
-npm run build
-
-# 安装并使用 gh-pages 部署
-npx gh-pages -d dist
-```
-然后在 GitHub 仓库 **Settings** -> **Pages** 中将 Source 设置为 `Deploy from a branch` 并选择 `gh-pages` 分支即可。
+### 部署配置方式（GitHub 仓库内设置）
+1. 确保已将项目（包含编译好的 `docs` 目录及 `assets` 目录）推送到 GitHub 仓库；
+2. 打开 GitHub 仓库页面，点击上方的 **Settings**（设置）；
+3. 在左侧菜单栏点击 **Pages**；
+4. 在 **Build and deployment** 下：
+   - **Source** 保持默认的 **`Deploy from a branch`**；
+   - **Branch** 选择 **`main`**（或 `master`）；
+   - **文件夹下拉框**：
+     - **推荐方式**：选择 **`/docs`** 目录（官方专为静态站点设计的发布目录，最稳定）；
+     - **根目录方式**：即使保持 **`/(root)`**，根目录中的 `index.html` 也已配置了自动加载编译产物与重定向逻辑；
+5. 点击 **Save**（保存）；
+6. 每次您向该分支推送更改时，GitHub 都会在后台自动重新部署，1~2 分钟后刷新页面即可顺畅游玩！
