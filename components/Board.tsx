@@ -47,8 +47,8 @@ export const Board: React.FC<BoardProps> = ({
 
       {/* Win or Game Over Overlay */}
       {(gameOver || won) && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md rounded-3xl sm:rounded-[36px] p-6 text-center animate-pop">
-          <div className="bg-white/95 dark:bg-slate-900/95 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-xs sm:max-w-sm w-full mx-4 border border-white/20 flex flex-col items-center">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 backdrop-blur-md rounded-3xl sm:rounded-[36px] p-6 text-center animate-overlay-in">
+          <div className="bg-white/95 dark:bg-slate-900/95 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-xs sm:max-w-sm w-full mx-4 border border-white/20 flex flex-col items-center animate-modal-up">
             {/* SVG Icon instead of emoji */}
             <div className="mb-3 flex items-center justify-center w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/10">
               {won ? (

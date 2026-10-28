@@ -143,7 +143,7 @@ function App() {
 
     setTimeout(() => {
       movingRef.current = false;
-    }, 150);
+    }, 140);
   }, [gameState.over]);
 
   // Keyboard navigation
@@ -262,7 +262,7 @@ function App() {
             {/* Score & Best Cards */}
             <div className="flex gap-2 min-w-[170px] sm:min-w-[190px]">
               {/* Score */}
-              <div className={`relative ${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm`}>
+              <div className={`relative ${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm transition-transform duration-150 ${recentScoreGain ? 'animate-score-bump' : ''}`}>
                 <div className={`text-[10px] font-black uppercase tracking-wider ${theme.scoreText} opacity-75`}>
                   {t.score}
                 </div>
@@ -271,7 +271,10 @@ function App() {
                 </div>
                 {/* Floating Score Popup */}
                 {recentScoreGain && (
-                  <div className="absolute -top-3 right-2 text-xs font-black text-emerald-500 animate-pop">
+                  <div
+                    key={`score-gain-${gameState.score}`}
+                    className="absolute -top-1.5 right-2 text-xs sm:text-sm font-black text-emerald-500 dark:text-emerald-400 animate-score-float filter drop-shadow-sm select-none"
+                  >
                     +{recentScoreGain}
                   </div>
                 )}
