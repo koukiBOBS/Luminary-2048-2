@@ -54,7 +54,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-6 pt-4 overflow-y-auto flex-1 space-y-6">
+        <div 
+          data-scrollable="true"
+          className="p-6 pt-4 overflow-y-auto flex-1 space-y-6 touch-pan-y overscroll-contain"
+          style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+        >
           {/* Tone Swatches (No Names) */}
           <div>
             <h3 className="text-sm font-black uppercase opacity-75 tracking-wider mb-3 flex items-center gap-2">

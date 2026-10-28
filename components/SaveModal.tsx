@@ -109,7 +109,7 @@ export const SaveModal: React.FC<SaveModalProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('Download started!');
+      showToast(t.downloadSuccess || (lang === 'zh' ? '存档文件已成功导出并下载！' : 'Game save exported and downloaded!'));
     } catch (e) {
       console.error("Download failed", e);
       setError(t.fileError);
@@ -146,10 +146,24 @@ export const SaveModal: React.FC<SaveModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop">
-      <div className={`w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl ${theme.cardBg} ${theme.textColor} border-2 border-black/10 dark:border-white/10 max-h-[92vh] overflow-y-auto`}>
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-pop touch-pan-y overflow-y-auto"
+      style={{ touchAction: 'pan-y' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        data-scrollable="true"
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md p-5 sm:p-7 rounded-3xl shadow-2xl ${theme.cardBg} ${theme.textColor} border-2 border-black/10 dark:border-white/10 max-h-[90vh] overflow-y-auto touch-pan-y overscroll-contain my-auto relative`}
+        style={{
+          touchAction: 'pan-y',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center mb-5">
+        <div className="flex justify-between items-center mb-4 sticky -top-5 sm:-top-7 pt-1 pb-2 bg-inherit z-20">
           <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2.5">
             {/* Floppy Disk Save SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500">
@@ -167,13 +181,25 @@ export const SaveModal: React.FC<SaveModalProps> = ({
           </button>
         </div>
 
-        {/* In-modal Toast Banner */}
+        {/* In-modal Toast Banner - Sticky and pan-y enabled so the modal remains freely scrollable */}
         {toastMessage && (
-          <div className="mb-4 p-3 rounded-2xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-2 animate-pop border border-emerald-500/30">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <span>{toastMessage}</span>
+          <div 
+            className="sticky top-12 z-30 mb-4 p-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-lg border border-emerald-400/40 animate-pop touch-pan-y"
+            style={{ touchAction: 'pan-y' }}
+          >
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>{toastMessage}</span>
+            </div>
+            <button 
+              onClick={() => setToastMessage(null)}
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white cursor-pointer ml-2 shrink-0 text-xs font-bold"
+              title="Close notification"
+            >
+              ✕
+            </button>
           </div>
         )}
 

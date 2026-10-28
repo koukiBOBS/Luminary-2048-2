@@ -30,6 +30,13 @@
         padding: 0;
       }
 
+      /* Allow smooth touch scrolling on modals and scrollable elements */
+      .overflow-y-auto, .overflow-y-scroll, [data-scrollable="true"] {
+        touch-action: pan-y !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+      }
+
       /* Custom pop animation for new tiles */
       @keyframes popIn {
         0% { transform: scale(0); opacity: 0; }
