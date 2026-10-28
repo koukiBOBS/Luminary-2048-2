@@ -24,11 +24,11 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
   // Milestone styling for high-tier tiles (1024, 2048, and beyond)
   let milestoneClass = '';
   if (tile.value === 1024) {
-    milestoneClass = 'ring-2 ring-amber-300/60 shadow-lg shadow-amber-500/20';
+    milestoneClass = 'animate-tile-glow-subtle';
   } else if (tile.value === 2048) {
-    milestoneClass = 'animate-tile-glow ring-2 ring-yellow-300/90 shadow-xl shadow-yellow-500/40';
+    milestoneClass = 'animate-tile-glow';
   } else if (tile.value > 2048) {
-    milestoneClass = 'animate-tile-glow ring-2 ring-violet-400/90 shadow-xl shadow-purple-500/40';
+    milestoneClass = 'animate-tile-super-glow';
   }
 
   return (
@@ -45,16 +45,24 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
         zIndex: tile.isMerged ? 20 : (tile.isDying ? 5 : 10), 
       }}
     >
+      {/* Outer animation wrapper for pop / merge scaling */}
       <div
-        className={`
-          w-full h-full rounded-2xl sm:rounded-3xl flex items-center justify-center font-black select-none
-          shadow-md transition-[background-color,color,box-shadow] duration-200
-          ${colorClass} ${textColorClass} ${fontSize} ${milestoneClass}
-          ${tile.isNew ? 'animate-pop' : ''}
-          ${tile.isMerged ? 'animate-merge' : ''}
-        `}
+        className={`w-full h-full ${tile.isNew ? 'animate-pop' : ''} ${tile.isMerged ? 'animate-merge' : ''}`}
       >
-        {tile.value}
+        {/* Tile face with dynamic theme glow custom properties */}
+        <div
+          className={`
+            w-full h-full rounded-2xl sm:rounded-3xl flex items-center justify-center font-black select-none
+            shadow-md transition-[background-color,color] duration-200
+            ${colorClass} ${textColorClass} ${fontSize} ${milestoneClass}
+          `}
+          style={{
+            ['--tile-glow-rgb' as any]: theme.glowRgb,
+            ['--tile-glow-super-rgb' as any]: theme.glowSuperRgb || theme.glowRgb,
+          }}
+        >
+          {tile.value}
+        </div>
       </div>
     </div>
   );

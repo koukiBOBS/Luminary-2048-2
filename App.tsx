@@ -245,6 +245,10 @@ function App() {
   return (
     <div 
       className={`fixed inset-0 w-full h-full flex items-center justify-center p-3 sm:p-5 transition-colors duration-500 ${theme.appBg} overflow-hidden select-none`}
+      style={{
+        ['--tile-glow-rgb' as any]: theme.glowRgb,
+        ['--tile-glow-super-rgb' as any]: theme.glowSuperRgb || theme.glowRgb,
+      }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

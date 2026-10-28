@@ -136,6 +136,8 @@ interface ThemeDefinition {
     secondaryButtonBg: string;
     tileColors: Record<number, string>;
     tileTextColors: Record<number, string>;
+    glowRgb: string;
+    glowSuperRgb: string;
   };
   dark: {
     appBg: string;
@@ -152,6 +154,8 @@ interface ThemeDefinition {
     secondaryButtonBg: string;
     tileColors: Record<number, string>;
     tileTextColors: Record<number, string>;
+    glowRgb: string;
+    glowSuperRgb: string;
   };
 }
 
@@ -202,6 +206,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '245, 158, 11',
+      glowSuperRgb: '251, 191, 36',
     },
     dark: {
       appBg: 'bg-[#1c1917]',
@@ -246,6 +252,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-stone-950 font-black',
         8192: 'text-stone-950 font-black',
       },
+      glowRgb: '245, 158, 11',
+      glowSuperRgb: '252, 211, 77',
     },
   },
 
@@ -295,6 +303,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '14, 165, 233',
+      glowSuperRgb: '56, 189, 248',
     },
     dark: {
       appBg: 'bg-[#0b1329]',
@@ -339,6 +349,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-gray-950 font-black',
         8192: 'text-gray-950 font-black',
       },
+      glowRgb: '56, 189, 248',
+      glowSuperRgb: '103, 232, 249',
     },
   },
 
@@ -388,6 +400,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '16, 185, 129',
+      glowSuperRgb: '52, 211, 153',
     },
     dark: {
       appBg: 'bg-[#061e14]',
@@ -432,6 +446,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-gray-950 font-black',
         8192: 'text-gray-950 font-black',
       },
+      glowRgb: '52, 211, 153',
+      glowSuperRgb: '110, 231, 183',
     },
   },
 
@@ -481,6 +497,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '236, 72, 153',
+      glowSuperRgb: '244, 114, 182',
     },
     dark: {
       appBg: 'bg-[#1f0d17]',
@@ -525,6 +543,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-gray-950 font-black',
         8192: 'text-gray-950 font-black',
       },
+      glowRgb: '244, 114, 182',
+      glowSuperRgb: '249, 168, 212',
     },
   },
 
@@ -574,6 +594,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '168, 85, 247',
+      glowSuperRgb: '192, 132, 252',
     },
     dark: {
       appBg: 'bg-[#150d24]',
@@ -618,6 +640,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-gray-950 font-black',
         8192: 'text-gray-950 font-black',
       },
+      glowRgb: '192, 132, 252',
+      glowSuperRgb: '216, 180, 254',
     },
   },
 
@@ -667,6 +691,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-white',
         8192: 'text-white',
       },
+      glowRgb: '249, 115, 22',
+      glowSuperRgb: '251, 146, 60',
     },
     dark: {
       appBg: 'bg-[#1f0f07]',
@@ -711,6 +737,8 @@ const PALETTES: Record<string, ThemeDefinition> = {
         4096: 'text-gray-950 font-black',
         8192: 'text-gray-950 font-black',
       },
+      glowRgb: '251, 146, 60',
+      glowSuperRgb: '253, 186, 116',
     },
   },
 };

@@ -26,7 +26,13 @@ export const Board: React.FC<BoardProps> = ({
   const gridCells = Array(GRID_SIZE * GRID_SIZE).fill(0);
 
   return (
-    <div className={`relative w-full aspect-square rounded-3xl sm:rounded-[36px] p-2 sm:p-3 shadow-xl transition-colors duration-300 ${theme.gridBg}`}>
+    <div 
+      className={`relative w-full aspect-square rounded-3xl sm:rounded-[36px] p-2 sm:p-3 shadow-xl transition-colors duration-300 ${theme.gridBg}`}
+      style={{
+        ['--tile-glow-rgb' as any]: theme.glowRgb,
+        ['--tile-glow-super-rgb' as any]: theme.glowSuperRgb || theme.glowRgb,
+      }}
+    >
       {/* Background Grid Cells */}
       <div className="grid grid-cols-4 grid-rows-4 w-full h-full">
         {gridCells.map((_, i) => (

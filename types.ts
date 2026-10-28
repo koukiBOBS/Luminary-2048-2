@@ -41,7 +41,8 @@ export interface Theme {
   buttonBg: string; // Primary button background
   buttonText: string; // Primary button text color
   buttonHoverBg?: string; // Primary button hover background
-  secondaryButtonBg: string; // Secondary button background
   tileColors: Record<number, string>; // Background & border classes for each tile number
   tileTextColors: Record<number, string>; // Accurate contrast text color for each tile number
+  glowRgb: string; // Radiant glow color in 'r, g, b' format for active theme
+  glowSuperRgb: string; // Enhanced radiant glow color in 'r, g, b' for super milestone tiles
 }
