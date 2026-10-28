@@ -84,11 +84,16 @@ function App() {
       } catch {
         // ignore
       }
+      if (next) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
       return next;
     });
   };
 
-  // Synchronize dark class to document root for Tailwind dark mode
+  // Synchronize dark class to document root for Tailwind dark mode on mount or state change
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -145,6 +150,10 @@ function App() {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (isModalOpen) return;
     
+    // Ignore keystrokes when typing inside text inputs or textareas
+    const target = e.target as HTMLElement;
+    if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+    
     let direction: Direction | null = null;
     if (['ArrowUp', 'w', 'W'].includes(e.key)) direction = 'UP';
     else if (['ArrowDown', 's', 'S'].includes(e.key)) direction = 'DOWN';
@@ -175,6 +184,12 @@ function App() {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isModalOpen) return;
+    // Do not trigger swipe moves when touching interactive buttons or inputs
+    const target = e.target as HTMLElement;
+    if (target && target.closest('button, input, textarea, a, select')) {
+      touchStartRef.current = null;
+      return;
+    }
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,

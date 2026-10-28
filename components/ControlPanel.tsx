@@ -60,7 +60,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           className={`py-3 px-4 rounded-2xl font-black shadow-md transition-all active:scale-95 text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer ${
             canUndo 
               ? `${currentTheme.secondaryButtonBg} text-white hover:opacity-95 shadow-lg` 
-              : 'bg-black/10 dark:bg-white/10 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+              : isDarkMode 
+                ? 'bg-white/10 text-stone-500 cursor-not-allowed opacity-40' 
+                : 'bg-black/10 text-gray-400 cursor-not-allowed opacity-40'
           }`}
           title={t.undo}
         >
@@ -73,7 +75,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       {/* Tone Swatches Bar + Day/Night Toggle (No Theme Names) */}
-      <div className="flex flex-col gap-2 p-2.5 rounded-2xl bg-black/5 dark:bg-white/10 backdrop-blur-md">
+      <div 
+        className={`flex flex-col gap-2 p-2.5 rounded-2xl transition-colors duration-200 border ${
+          isDarkMode 
+            ? 'bg-white/10 border-white/10 shadow-sm' 
+            : 'bg-black/5 border-black/5 shadow-sm'
+        }`}
+      >
         <div className="flex items-center justify-between px-1">
           <span className={`text-[11px] font-bold uppercase tracking-wider opacity-75 flex items-center gap-1.5 ${currentTheme.textColor}`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -91,7 +99,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             onClick={onToggleDarkMode}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${
               isDarkMode 
-                ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-400/30 hover:bg-indigo-600/40' 
+                ? 'bg-indigo-600/35 text-indigo-200 border border-indigo-400/40 hover:bg-indigo-600/50' 
                 : 'bg-amber-500/20 text-amber-800 border border-amber-500/30 hover:bg-amber-500/30'
             }`}
             title={isDarkMode ? t.dayMode : t.nightMode}
@@ -132,7 +140,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 }}
                 className={`group relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer ${
                   isSelected
-                    ? 'scale-115 shadow-md ring-2 ring-white/90 dark:ring-white/80 ring-offset-2 ring-offset-black/20'
+                    ? `scale-115 shadow-md ring-2 ${isDarkMode ? 'ring-white/90' : 'ring-black/60'} ring-offset-2 ring-offset-transparent`
                     : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 style={{
@@ -150,10 +158,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       {/* Auxiliary Bar: Save, Sound, Lang, Settings */}
-      <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-black/5 dark:bg-white/10 backdrop-blur-md">
+      <div 
+        className={`flex items-center justify-between gap-2 p-2 rounded-2xl transition-colors duration-200 border ${
+          isDarkMode 
+            ? 'bg-white/10 border-white/10 shadow-sm' 
+            : 'bg-black/5 border-black/5 shadow-sm'
+        }`}
+      >
         <button
           onClick={onOpenSaveModal}
-          className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 bg-black/10 dark:bg-white/15 hover:bg-black/20 dark:hover:bg-white/25 cursor-pointer ${currentTheme.textColor}`}
+          className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer ${currentTheme.textColor} ${
+            isDarkMode 
+              ? 'bg-white/15 hover:bg-white/25 active:bg-white/30' 
+              : 'bg-black/10 hover:bg-black/20 active:bg-black/25'
+          }`}
           title={t.archive}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -167,7 +185,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         {/* Sound Toggle */}
         <button
           onClick={onToggleMute}
-          className={`w-9 h-9 flex items-center justify-center rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 bg-black/10 dark:bg-white/15 hover:bg-black/20 dark:hover:bg-white/25 cursor-pointer ${currentTheme.textColor}`}
+          className={`w-9 h-9 flex items-center justify-center rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer ${currentTheme.textColor} ${
+            isDarkMode 
+              ? 'bg-white/15 hover:bg-white/25 active:bg-white/30' 
+              : 'bg-black/10 hover:bg-black/20 active:bg-black/25'
+          }`}
           title={isMuted ? t.soundOff : t.soundOn}
         >
           {isMuted ? (
@@ -190,7 +212,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         {/* Language Toggle */}
         <button
           onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
-          className={`h-9 px-3 flex items-center justify-center rounded-xl font-black text-xs shadow-sm transition-all active:scale-95 bg-black/10 dark:bg-white/15 hover:bg-black/20 dark:hover:bg-white/25 cursor-pointer ${currentTheme.textColor}`}
+          className={`h-9 px-3 flex items-center justify-center rounded-xl font-black text-xs shadow-sm transition-all active:scale-95 cursor-pointer ${currentTheme.textColor} ${
+            isDarkMode 
+              ? 'bg-white/15 hover:bg-white/25 active:bg-white/30' 
+              : 'bg-black/10 hover:bg-black/20 active:bg-black/25'
+          }`}
           title={t.language}
         >
           {lang === 'en' ? '中文' : 'EN'}
@@ -199,7 +225,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         {/* Settings Button */}
         <button
           onClick={onOpenSettingsModal}
-          className={`w-9 h-9 flex items-center justify-center rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 bg-black/10 dark:bg-white/15 hover:bg-black/20 dark:hover:bg-white/25 cursor-pointer ${currentTheme.textColor}`}
+          className={`w-9 h-9 flex items-center justify-center rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer ${currentTheme.textColor} ${
+            isDarkMode 
+              ? 'bg-white/15 hover:bg-white/25 active:bg-white/30' 
+              : 'bg-black/10 hover:bg-black/20 active:bg-black/25'
+          }`}
           title={t.settings}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
