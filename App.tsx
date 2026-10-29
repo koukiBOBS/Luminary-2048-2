@@ -56,32 +56,10 @@ function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => sound.getMuted());
   const [recentScoreGain, setRecentScoreGain] = useState<number | null>(null);
-  const [comboCount, setComboCount] = useState<number>(0);
-  const [comboKey, setComboKey] = useState<number>(0);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const movingRef = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
-  const comboCountRef = useRef<number>(0);
-  const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const clearCombo = useCallback(() => {
-    if (comboTimerRef.current) {
-      clearTimeout(comboTimerRef.current);
-      comboTimerRef.current = null;
-    }
-    comboCountRef.current = 0;
-    setComboCount(0);
-  }, []);
-
-  // Cleanup combo timer on unmount
-  useEffect(() => {
-    return () => {
-      if (comboTimerRef.current) {
-        clearTimeout(comboTimerRef.current);
-      }
-    };
-  }, []);
 
   const t = TRANSLATIONS[lang];
   const isModalOpen = isSaveModalOpen || isSettingsModalOpen;
@@ -149,34 +127,14 @@ function App() {
       const result = moveTiles(prev, direction);
       if (result.moved) {
         if (result.scoreToAdd > 0) {
-          // Clear previous combo countdown and bump combo counter
-          if (comboTimerRef.current) {
-            clearTimeout(comboTimerRef.current);
-          }
-          const nextCombo = comboCountRef.current + 1;
-          comboCountRef.current = nextCombo;
-          setComboCount(nextCombo);
-          setComboKey(k => k + 1);
-
-          comboTimerRef.current = setTimeout(() => {
-            comboCountRef.current = 0;
-            setComboCount(0);
-          }, 2200);
-
-          sound.playMerge(result.scoreToAdd, nextCombo);
+          sound.playMerge(result.scoreToAdd);
           setRecentScoreGain(result.scoreToAdd);
           setTimeout(() => setRecentScoreGain(null), 800);
         } else {
           sound.playMove();
         }
 
-        if (result.nextState.over) {
-          if (comboTimerRef.current) {
-            clearTimeout(comboTimerRef.current);
-          }
-          comboCountRef.current = 0;
-          setComboCount(0);
-        } else if (result.nextState.won && !prev.won) {
+        if (result.nextState.won && !prev.won) {
           sound.playWin();
         }
       }
@@ -261,13 +219,11 @@ function App() {
   };
 
   const resetGame = () => {
-    clearCombo();
     setGameState(getInitialState());
     setIsKeepGoing(false);
   };
 
   const handleUndo = () => {
-    clearCombo();
     setGameState(prev => undoMove(prev));
     sound.playMove();
   };
@@ -278,7 +234,6 @@ function App() {
   };
   
   const handleLoadGame = (newState: GameState) => {
-    clearCombo();
     restoreIdCounter(newState.tiles);
     setGameState(newState);
     setIsKeepGoing(false);
@@ -311,31 +266,7 @@ function App() {
             {/* Score & Best Cards */}
             <div className="flex gap-2 min-w-[170px] sm:min-w-[190px]">
               {/* Score */}
-              <div className={`relative ${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm transition-all duration-150 ${recentScoreGain ? 'animate-score-bump' : ''} ${comboCount >= 2 ? 'ring-2 ring-amber-400/60 shadow-amber-500/25' : ''}`}>
-                {/* Floating Combo Badge */}
-                {comboCount >= 2 && (
-                  <div
-                    key={`combo-badge-${comboKey}`}
-                    className={`absolute -top-3.5 sm:-top-4 -left-2 sm:-left-3 z-20 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full shadow-lg text-white font-black text-[10px] sm:text-xs tracking-wider animate-combo-pop select-none filter drop-shadow-md border border-white/30 whitespace-nowrap overflow-hidden pointer-events-none ${
-                      comboCount >= 5
-                        ? 'bg-gradient-to-r from-purple-600 via-pink-500 to-amber-500 shadow-purple-500/40 ring-1 ring-purple-300/50'
-                        : comboCount >= 3
-                        ? 'bg-gradient-to-r from-orange-500 via-rose-500 to-red-500 shadow-orange-500/40 ring-1 ring-orange-300/50'
-                        : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 shadow-amber-500/40 ring-1 ring-amber-300/50'
-                    }`}
-                  >
-                    <span className="text-xs sm:text-sm animate-pulse leading-none">
-                      {comboCount >= 5 ? '⚡' : comboCount >= 3 ? '🔥' : '✨'}
-                    </span>
-                    <span className="leading-none drop-shadow-sm">{t.combo}</span>
-                    <span className="text-yellow-200 font-black text-xs sm:text-sm leading-none drop-shadow-sm">
-                      ×{comboCount}
-                    </span>
-                    {/* Countdown indicator */}
-                    <div className="absolute bottom-0 left-1 right-1 h-[2px] bg-white/70 animate-combo-timer rounded-full" />
-                  </div>
-                )}
-
+              <div className={`relative ${theme.scoreBg} flex-1 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-2xl text-center shadow-sm transition-transform duration-150 ${recentScoreGain ? 'animate-score-bump' : ''}`}>
                 <div className={`text-[10px] font-black uppercase tracking-wider ${theme.scoreText} opacity-75`}>
                   {t.score}
                 </div>
