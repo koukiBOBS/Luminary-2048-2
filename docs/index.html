@@ -221,39 +221,6 @@
       </div>
     </div>
 
-    <!-- Production static bundle auto-loader for GitHub Pages / static hosting -->
-    <script>
-      (function() {
-        var isStaticDeploy = !window.__vite_plugin_react_preamble_installed__ && (
-          window.location.hostname.endsWith('github.io') ||
-          window.location.hostname.includes('github') ||
-          window.location.protocol === 'file:' ||
-          (window.location.port !== '3000' && window.location.port !== '5173')
-        );
-
-        if (isStaticDeploy) {
-          var s = document.createElement('script');
-          s.type = 'module';
-          s.crossOrigin = 'anonymous';
-          s.src = './assets/index.js';
-          s.onerror = function() {
-            var s2 = document.createElement('script');
-            s2.type = 'module';
-            s2.crossOrigin = 'anonymous';
-            s2.src = './docs/assets/index.js';
-            s2.onerror = function() {
-              var targetDocsUrl = window.location.pathname.replace(/\/+$/, '') + '/docs/';
-              if (!window.location.pathname.endsWith('/docs/') && !window.location.pathname.endsWith('/docs/index.html')) {
-                window.location.replace(targetDocsUrl);
-              }
-            };
-            document.head.appendChild(s2);
-          };
-          document.head.appendChild(s);
-        }
-      })();
-    </script>
-
     <!-- Source entry point for Vite dev server & Vite build -->
   </body>
 </html>

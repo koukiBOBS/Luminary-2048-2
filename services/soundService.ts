@@ -65,7 +65,7 @@ class SoundEffects {
     }
   }
 
-  public playMerge(value: number = 4) {
+  public playMerge(value: number = 4, comboCount: number = 0) {
     if (this.isMuted) return;
     try {
       this.initContext();
@@ -75,9 +75,10 @@ class SoundEffects {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
-      // Pitch increases smoothly with tile value
+      // Pitch increases smoothly with tile value + combo escalation
       const logVal = Math.log2(value);
-      const baseFreq = 260 + Math.min(logVal * 55, 600);
+      const comboBonus = Math.min(Math.max(comboCount - 1, 0) * 45, 240);
+      const baseFreq = 260 + Math.min(logVal * 55, 600) + comboBonus;
 
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(baseFreq, now);
@@ -91,6 +92,26 @@ class SoundEffects {
 
       osc.start();
       osc.stop(now + 0.14);
+
+      // If combo >= 2, play a sparkling harmonic chime for extra excitement
+      if (comboCount >= 2) {
+        const chimeOsc = this.ctx.createOscillator();
+        const chimeGain = this.ctx.createGain();
+
+        chimeOsc.type = 'sine';
+        const chimeFreq = baseFreq * 2;
+        chimeOsc.frequency.setValueAtTime(chimeFreq, now + 0.03);
+        chimeOsc.frequency.exponentialRampToValueAtTime(chimeFreq * 1.25, now + 0.18);
+
+        chimeGain.gain.setValueAtTime(0.08, now + 0.03);
+        chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        chimeOsc.connect(chimeGain);
+        chimeGain.connect(this.ctx.destination);
+
+        chimeOsc.start(now + 0.03);
+        chimeOsc.stop(now + 0.18);
+      }
     } catch {
       // Audio might fail silently
     }

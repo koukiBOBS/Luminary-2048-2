@@ -6,6 +6,7 @@ export const TRANSLATIONS = {
   en: {
     score: 'Score',
     best: 'Best',
+    combo: 'Combo',
     newGame: 'New Game',
     undo: 'Undo',
     theme: 'Tone',
@@ -58,6 +59,7 @@ export const TRANSLATIONS = {
   zh: {
     score: '当前得分',
     best: '最高纪录',
+    combo: '连击',
     newGame: '新游戏',
     undo: '撤销',
     theme: '界面色调',
