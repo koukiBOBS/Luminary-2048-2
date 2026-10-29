@@ -248,6 +248,9 @@ export const moveTiles = (state: GameState, direction: Direction): { nextState: 
 
   addRandomTile(newTiles);
 
+  // Stable sort by id so React preserves DOM node identity during sliding transitions
+  newTiles.sort((a, b) => a.id - b.id);
+
   const activeTiles = newTiles.filter(t => !t.isDying);
   const won = activeTiles.some(t => t.value === 2048) && !state.won;
 

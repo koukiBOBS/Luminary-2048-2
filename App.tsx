@@ -58,6 +58,7 @@ function App() {
   const [recentScoreGain, setRecentScoreGain] = useState<number | null>(null);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mouseStartRef = useRef<{ x: number; y: number } | null>(null);
   const movingRef = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -123,13 +124,17 @@ function App() {
     if (gameState.over) return;
 
     movingRef.current = true;
+    setTimeout(() => {
+      movingRef.current = false;
+    }, 50);
+
     setGameState(prev => {
       const result = moveTiles(prev, direction);
       if (result.moved) {
         if (result.scoreToAdd > 0) {
           sound.playMerge(result.scoreToAdd);
           setRecentScoreGain(result.scoreToAdd);
-          setTimeout(() => setRecentScoreGain(null), 800);
+          setTimeout(() => setRecentScoreGain(null), 700);
         } else {
           sound.playMove();
         }
@@ -137,13 +142,25 @@ function App() {
         if (result.nextState.won && !prev.won) {
           sound.playWin();
         }
+
+        // 1) Clean up sliding/dying tiles once the 100ms slide has fully arrived (at 120ms)
+        setTimeout(() => {
+          setGameState(curr => ({
+            ...curr,
+            tiles: curr.tiles.filter(t => !t.isDying),
+          }));
+        }, 120);
+
+        // 2) Clean up animation flags after the 180ms pulse/appear has fully completed (at 200ms)
+        setTimeout(() => {
+          setGameState(curr => ({
+            ...curr,
+            tiles: curr.tiles.map(t => (t.isMerged || t.isNew ? { ...t, isMerged: false, isNew: false } : t)),
+          }));
+        }, 200);
       }
       return result.nextState;
     });
-
-    setTimeout(() => {
-      movingRef.current = false;
-    }, 140);
   }, [gameState.over]);
 
   // Keyboard navigation
@@ -182,6 +199,63 @@ function App() {
     return () => board.removeEventListener('touchmove', preventScroll);
   }, []);
 
+  // Mouse drag & swipe support for left-click tile movement
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!mouseStartRef.current || isModalOpen) return;
+      // If left button is no longer pressed, cancel drag
+      if (e.buttons !== 1) {
+        mouseStartRef.current = null;
+        return;
+      }
+      const dx = e.clientX - mouseStartRef.current.x;
+      const dy = e.clientY - mouseStartRef.current.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (Math.max(absDx, absDy) >= 20) {
+        const dir: Direction = absDx > absDy ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP');
+        executeMove(dir);
+        mouseStartRef.current = null; // Consume swipe immediately on threshold
+      }
+    };
+
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (!mouseStartRef.current || isModalOpen) return;
+      const dx = e.clientX - mouseStartRef.current.x;
+      const dy = e.clientY - mouseStartRef.current.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (Math.max(absDx, absDy) >= 20) {
+        const dir: Direction = absDx > absDy ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP');
+        executeMove(dir);
+      }
+      mouseStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isModalOpen, executeMove]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only drag with left mouse button (button 0)
+    if (e.button !== 0 || isModalOpen) return;
+    const target = e.target as HTMLElement;
+    if (target && target.closest('button, input, textarea, a, select, [role="button"]')) {
+      mouseStartRef.current = null;
+      return;
+    }
+    mouseStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isModalOpen) return;
     // Do not trigger swipe moves when touching interactive buttons or inputs
@@ -196,6 +270,20 @@ function App() {
     };
   };
 
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isModalOpen || !touchStartRef.current) return;
+    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    const dy = e.touches[0].clientY - touchStartRef.current.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (Math.max(absDx, absDy) >= 20) {
+      const dir: Direction = absDx > absDy ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP');
+      executeMove(dir);
+      touchStartRef.current = null; // Consume swipe immediately on threshold
+    }
+  };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (isModalOpen || !touchStartRef.current) return;
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
@@ -203,17 +291,9 @@ function App() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    if (Math.max(absDx, absDy) > 25) { 
-      let direction: Direction | null = null;
-      if (absDx > absDy) {
-        direction = dx > 0 ? 'RIGHT' : 'LEFT';
-      } else {
-        direction = dy > 0 ? 'DOWN' : 'UP';
-      }
-      
-      if (direction) {
-        executeMove(direction);
-      }
+    if (Math.max(absDx, absDy) >= 20) { 
+      const dir: Direction = absDx > absDy ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP');
+      executeMove(dir);
     }
     touchStartRef.current = null;
   };
@@ -250,7 +330,9 @@ function App() {
         ['--tile-glow-super-rgb' as any]: theme.glowSuperRgb || theme.glowRgb,
       }}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
     >
       <div className="w-full h-full flex flex-col landscape:flex-row items-center justify-center gap-4 sm:gap-6 landscape:gap-8 max-w-[460px] landscape:max-w-none">
         

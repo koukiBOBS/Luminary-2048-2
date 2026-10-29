@@ -27,7 +27,7 @@ export const Board: React.FC<BoardProps> = ({
 
   return (
     <div 
-      className={`relative w-full aspect-square rounded-3xl sm:rounded-[36px] p-2 sm:p-3 shadow-xl transition-colors duration-300 ${theme.gridBg}`}
+      className={`relative w-full aspect-square rounded-3xl sm:rounded-[36px] p-2 sm:p-3 shadow-xl transition-colors duration-300 cursor-grab active:cursor-grabbing ${theme.gridBg}`}
       style={{
         ['--tile-glow-rgb' as any]: theme.glowRgb,
         ['--tile-glow-super-rgb' as any]: theme.glowSuperRgb || theme.glowRgb,

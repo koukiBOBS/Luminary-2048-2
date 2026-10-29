@@ -37,57 +37,50 @@
         overscroll-behavior-y: contain !important;
       }
 
-      /* Optimized hardware-accelerated animations */
-      .will-change-transform {
+      /* Exact hardware-accelerated tile movement matching reference */
+      .tile {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 25%;
+        height: 25%;
+        pointer-events: none;
+        transition: transform 0.1s ease-in-out;
         will-change: transform;
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
         transform: translateZ(0);
       }
 
-      /* Elastic spring pop animation for newly spawned tiles */
-      @keyframes popIn {
-        0% {
+      /* Tile spawn appear animation from reference: crisp 0.18s ease-out scale & fade */
+      @keyframes appear {
+        from {
           transform: scale(0);
-          opacity: 0;
+          opacity: 0.2;
         }
-        55% {
-          transform: scale(1.14);
-          opacity: 1;
-        }
-        80% {
-          transform: scale(0.96);
-          opacity: 1;
-        }
-        100% {
+        to {
           transform: scale(1);
           opacity: 1;
         }
       }
       .animate-pop {
-        animation: popIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        animation: appear 0.18s ease-out;
       }
 
-      /* Merge impact bounce synchronized with tile arrival (~120ms) */
-      @keyframes mergeBounce {
+      /* Tile merge pulse animation from reference: crisp 0.18s ease-out tactile pop */
+      @keyframes pulse {
         0% {
           transform: scale(1);
         }
-        35% {
-          transform: scale(1.02);
-        }
-        60% {
-          transform: scale(1.22);
-        }
-        82% {
-          transform: scale(0.96);
+        45% {
+          transform: scale(1.14);
         }
         100% {
           transform: scale(1);
         }
       }
       .animate-merge {
-        animation: mergeBounce 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+        animation: pulse 0.18s ease-out;
       }
 
       /* Floating score gain animation */

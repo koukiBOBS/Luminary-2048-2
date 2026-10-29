@@ -33,16 +33,10 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
 
   return (
     <div
-      className={`absolute transition-[transform,opacity] duration-140 ease-[cubic-bezier(0.22,1,0.36,1)] p-1 sm:p-2 will-change-transform pointer-events-none ${
-        tile.isDying ? 'opacity-0 scale-95 duration-120' : 'opacity-100 scale-100'
-      }`}
+      className="tile p-1 sm:p-2"
       style={{
-        width: '25%',
-        height: '25%',
-        transform: `translate3d(${x * 4}%, ${y * 4}%, 0)`,
-        left: 0,
-        top: 0,
-        zIndex: tile.isMerged ? 20 : (tile.isDying ? 5 : 10), 
+        transform: `translate3d(${tile.col * 100}%, ${tile.row * 100}%, 0)`,
+        zIndex: tile.isMerged ? 20 : (tile.isDying ? 1 : 10), 
       }}
     >
       {/* Outer animation wrapper for pop / merge scaling */}
@@ -53,7 +47,7 @@ export const Tile: React.FC<TileProps> = ({ tile, theme }) => {
         <div
           className={`
             w-full h-full rounded-2xl sm:rounded-3xl flex items-center justify-center font-black select-none
-            shadow-md transition-[background-color,color] duration-200
+            shadow-md
             ${colorClass} ${textColorClass} ${fontSize} ${milestoneClass}
           `}
           style={{
