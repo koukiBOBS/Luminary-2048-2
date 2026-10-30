@@ -59,7 +59,8 @@ function App() {
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const mouseStartRef = useRef<{ x: number; y: number } | null>(null);
-  const movingRef = useRef(false);
+  const cleanTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const animTimerRef = useRef<NodeJS.Timeout | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[lang];
@@ -118,17 +119,12 @@ function App() {
     sound.setMuted(nextMuted);
   };
 
-  // Perform directional move
+  // Perform directional move (zero input blocking: allows simultaneous keys like S+D)
   const executeMove = useCallback((direction: Direction) => {
-    if (movingRef.current) return;
     if (gameState.over) return;
 
-    movingRef.current = true;
-    setTimeout(() => {
-      movingRef.current = false;
-    }, 50);
-
     setGameState(prev => {
+      if (prev.over) return prev;
       const result = moveTiles(prev, direction);
       if (result.moved) {
         if (result.scoreToAdd > 0) {
@@ -143,16 +139,18 @@ function App() {
           sound.playWin();
         }
 
-        // 1) Clean up sliding/dying tiles once the 100ms slide has fully arrived (at 120ms)
-        setTimeout(() => {
+        // 1) Clean up sliding/dying tiles once the 100ms slide has fully arrived
+        if (cleanTimerRef.current) clearTimeout(cleanTimerRef.current);
+        cleanTimerRef.current = setTimeout(() => {
           setGameState(curr => ({
             ...curr,
             tiles: curr.tiles.filter(t => !t.isDying),
           }));
         }, 120);
 
-        // 2) Clean up animation flags after the 180ms pulse/appear has fully completed (at 200ms)
-        setTimeout(() => {
+        // 2) Clean up animation flags after the 180ms pulse/appear has fully completed
+        if (animTimerRef.current) clearTimeout(animTimerRef.current);
+        animTimerRef.current = setTimeout(() => {
           setGameState(curr => ({
             ...curr,
             tiles: curr.tiles.map(t => (t.isMerged || t.isNew ? { ...t, isMerged: false, isNew: false } : t)),
